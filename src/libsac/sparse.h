@@ -20,6 +20,8 @@ protected:
   std::int32_t lb{0};
 };
 
+// rank-mapping errors
+// counting how many used symbols exist between the prediction and the target: error+prediction
 class SparsePCM {
   static constexpr double cost_pow = 1;
 

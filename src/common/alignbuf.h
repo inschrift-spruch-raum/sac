@@ -5,13 +5,15 @@
 
 template<typename T, std::size_t align_t = 64> struct align_alloc {
   using value_type = T;
+    using propagate_on_container_move_assignment = std::true_type;
+    using is_always_equal = std::true_type;
 
   template<typename U> struct rebind {
     using other = align_alloc<U, align_t>;
   };
 
   constexpr align_alloc() noexcept = default;
-  constexpr align_alloc(const align_alloc&) noexcept = default;
+  constexpr align_alloc(const align_alloc&) noexcept = default;// explicit default-copy-ctor is redundant
   constexpr align_alloc(align_alloc&&) noexcept = default;
   align_alloc& operator=(const align_alloc&) noexcept = default;
   align_alloc& operator=(align_alloc&&) noexcept = default;
