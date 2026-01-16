@@ -2,15 +2,9 @@
 ![Repo size](https://img.shields.io/github/repo-size/slmdev/sac)
 ![Loc](https://sloc.xyz/github/slmdev/sac)
 ![License](https://img.shields.io/github/license/slmdev/sac)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/inschrift-spruch-raum/sac-zig-build)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/inschrift-spruch-raum/sac)
 
 # Sac
-
-Zig Build System for the [Sac](https://github.com/slmdev/sac)
-
-The original repository did not provide a compilation plan This is the reason for Fork
-
-Zig 0.14.0
 
 Sac is a state-of-the-art lossless audio compression model
 

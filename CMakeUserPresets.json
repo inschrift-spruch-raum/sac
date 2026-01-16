@@ -1,0 +1,28 @@
+{
+  "version": 8,
+  "configurePresets": [
+    {
+      "name": "Debug-Clang",
+      "inherits": "Debug",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "Build-Clang",
+      "description": "",
+      "displayName": "",
+      "configurePreset": "Debug-Clang"
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "Pack-Clang",
+      "description": "",
+      "displayName": "",
+      "configurePreset": "Debug-Clang"
+    }
+  ]
+}
