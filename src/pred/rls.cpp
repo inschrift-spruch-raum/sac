@@ -33,7 +33,7 @@ void RLS::Update(double val)
 
   vec1D ph=MathUtils::mul(P,hist); //phi=hist P hist
   // a priori variance of prediction
-  double phi=MathUtils::dot_scalar(hist,ph);
+  double phi=std::max(MathUtils::dot_scalar(hist,ph),PHI_FLOOR);
 
   double alpha=gamma;
   if constexpr(SACGlobalCfg::RLS_ALC) {
