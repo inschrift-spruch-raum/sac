@@ -113,11 +113,11 @@ Shell::CreateParamHandlers() {
     set_optimization(s, 0.25, 500, 0.2);
   };
   handlers["--BEST"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 0.5, 1000, 0.2);
+    set_optimization(s, 0.5, 1250, 0.2);
     s.cfg.ocfg.optimize_cost = FrameCoder::SearchCost::Bitplane;
   };
   handlers["--INSANE"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 0.5, 1500, 0.25);
+    set_optimization(s, 0.6, 1500, 0.25);
     s.cfg.ocfg.optimize_cost = FrameCoder::SearchCost::Bitplane;
   };
   handlers["--OPTIMIZE"] = [](Shell& s, auto val) {

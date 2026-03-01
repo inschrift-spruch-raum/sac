@@ -84,11 +84,12 @@ public:
     var_ = alpha_ * var_ + (1.0 - alpha_) * ((val - old_mean) * (val - mean_));
   }
 
-  auto get() { return std::pair{mean_, std::max(0.0, var_)}; }
+  [[nodiscard]] auto Get() const {
+    return std::pair{mean_, std::max(0.0, var_)};
+  }
 
 protected:
   double alpha_;
-  bool first_{true};
   double mean_, var_;
 };
 

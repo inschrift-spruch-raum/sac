@@ -28,14 +28,9 @@ auto OptCMA::generate_candidate(const vec1D &x,double sigma)
   vec1D xgen(ndim);
   for (std::int32_t i=0;i<ndim;i++)
   {
-    if constexpr(1) {
-      double scale=(pb[i].xmax-pb[i].xmin)*sigma;
-      double xnew=x[i] + scale*az[i];
-      xgen[i]=reflect(xnew,pb[i].xmin,pb[i].xmax);
-    } else {
-      double xnew=xnorm[i] + sigma*az[i];
-      xgen[i] = reflect(xnew,0,1);
-    }
+    double scale=(pb[i].xmax-pb[i].xmin)*sigma;
+    double xnew=x[i] + scale*az[i];
+    xgen[i]=reflect(xnew,pb[i].xmin,pb[i].xmax);
   }
   return std::tuple{xgen,az};
 }

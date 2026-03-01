@@ -1,39 +1,25 @@
 #pragma once // LMS_CASCADE_H
 
+#include "blend.h"
 #include "lms.h"
 #include "rls.h"
-#include "blend.h"
-#include "../common/utils.h"
-
-/*
-  double e0=std::abs(target-px0);
-  double e1=(target-px1)*(target-px1);
-  rp0.Update(e0);
-  rp1.Update(e1);
-
-  // log-likelihood under source model
-  double pl0=MathUtils::calc_loglik_L1(e0,std::max(rp0.sum,1E-8));
-  double pl1=MathUtils::calc_loglik_L2(e1,std::max(rp1.sum,1E-8));
-  double nbits0 = -pl0 / std::log(2.0);
-  double nbits1 = -pl1 / std::log(2.0);
-
-  cv2.Update(nbits0,nbits1);
-*/
-
+#include <memory>
 
 // Blend 2xLMS-ADA using L1 + L2 loss
 // using absolute error as scoring function
 class Blend2LMS_L1 {
   public:
-    Blend2LMS_L1(std::int32_t n,double lms_mu,double lms_beta,double blend_beta=0.95)
+    Blend2LMS_L1(std::int32_t n,double lms_mu,double lms_beta)
     :n(n),px0(0.0),px1(0.0),
      mix0(n,lms_mu,lms_beta),
      mix1(n,lms_mu,lms_beta),
-     cw2(blend_beta)
+     cw2(lms_beta)
     {
-      if constexpr(SACGlobalCfg::LMS_MIX_INIT)
-        for (std::int32_t i=0;i<n-1;i++)
+      if constexpr(SACCfg::LMS_MIX_INIT) {
+        for (std::int32_t i=0;i<n-1;i++) {
           mix0.w[i] = mix1.w[i] = 1.0/(i+1);
+        }
+      }
     }
     double GetWeight(std::int32_t index) const
     {
@@ -49,11 +35,12 @@ class Blend2LMS_L1 {
     {
       mix0.Update(target);
       mix1.Update(target);
-      if constexpr(SACGlobalCfg::LMS_MIX_CLAMPW)
+      if constexpr(SACCfg::LMS_MIX_CLAMPW) {
         for (std::int32_t i=0;i<n;i++) {
           mix0.w[i]=std::max(mix0.w[i],0.0);
           mix1.w[i]=std::max(mix1.w[i],0.0);
         }
+      }
     }
     void UpdateBlend(double target)
     {
@@ -69,13 +56,92 @@ class Blend2LMS_L1 {
 };
 
 
+// horizontal blend of arbitrary number of (LMS-)experts
+class BlendLMS {
+  public:
+    explicit BlendLMS(std::vector<std::unique_ptr<LMS>> preds,double mv_alpha=0.9,double mv_beta=5)
+    :expert(std::move(preds)), //pp has ownership of predictors
+    np(expert.size()),
+    ep(np),ew(np),
+    //rsum(np,RunMeanVar(mv_alpha)),beta(mv_beta),
+    sm(np,mv_alpha,mv_beta)
+    {
+      if (expert.empty())
+            throw std::invalid_argument("BlendLMS: preds.size() must be >0");
+    }
+
+    //blended contribution of index component over all experts
+    double GetWeightedContribution(int index) {
+        for (std::size_t i=0;i<np;i++)
+          ew[i]=expert[i]->w[index];
+
+        double weight=MathUtils::dot_scalar(ew,sm.Weights());
+        return std::max(weight,0.0);
+    }
+    //prediction using blended predictors over input
+    double Predict(const vec1D &input)
+    {
+      for (std::size_t i=0;i<np;i++) {
+        ep[i]=expert[i]->Predict(input); // call expert i
+        if (!std::isfinite(ep[i]))
+          throw std::invalid_argument("exception in cascade, predictor is not finite");
+      }
+
+      return sm.Predict(ep); //blend;
+    }
+    void Update(double target)
+    {
+      for (std::size_t i=0;i<np;i++) {
+        expert[i]->Update(target);
+
+        if constexpr(SACCfg::LMS_MIX_CLAMPW) {
+          for (int k=0;k<(int)expert[i]->w.size();k++) {
+            expert[i]->w[k]=std::max(expert[i]->w[k],0.0);
+          }
+        }
+      }
+
+      sm.Update(target);
+    }
+
+private:
+    std::vector<std::unique_ptr<LMS>> expert;
+    std::size_t np;
+    vec1D ep,ew;
+    //std::vector <RunMeanVar> rsum;
+    //double beta;
+    //double px;
+    BlendExp sm;
+};
+
+
+static std::vector<std::unique_ptr<LMS>>
+make_mix(int n,double mu_mix,double mu_mix_beta)
+{
+    std::vector<std::unique_ptr<LMS>> p;
+    p.push_back(std::make_unique<LAD_ADA>(n, 1*mu_mix,mu_mix_beta));
+    p.push_back(std::make_unique<LMS_ADA>(n, 1*mu_mix,mu_mix_beta));
+    //p.push_back(std::make_unique<LAD_ADA>(n, 2*mu_mix,mu_mix_beta));
+    //p.push_back(std::make_unique<LMS_ADA>(n, 2*mu_mix,mu_mix_beta));
+
+    if constexpr(SACCfg::LMS_MIX_INIT) {
+      for (std::size_t i=0;i<p.size();i++) {
+        for (int k=0;k<n;k++) {
+          p[i]->w[k] = 1.0/(1.0+k);
+        }
+      }
+    }
+
+    return p;
+}
+
 class Cascade {
   public:
     Cascade(const std::vector<std::int32_t> &vn,const std::vector<double>&vmu,
                const std::vector<double>&vmudecay,const std::vector<double> &vpowdecay,
                double mu_mix,double mu_mix_beta,std::int32_t lm_n,double lm_alpha)
     :n(vn.size()),p(n+1),
-     mix(n+1,mu_mix,mu_mix_beta),
+     mix(make_mix(n+1,mu_mix,mu_mix_beta)),
      lm(lm_n,lm_alpha),
      clms(n)
     {
@@ -92,15 +158,15 @@ class Cascade {
     }
     void Update(const double target)
     {
-      mix.UpdateMixer(target);
 
       double t=target;
       for (std::int32_t i=0;i<n; i++) {
         clms[i]->Update(t);
-        t-=mix.GetWeight(i)*p[i];
+        t-=mix.GetWeightedContribution(i)*p[i];
       }
       lm.UpdateHist(t);
-      mix.UpdateBlend(target);
+
+      mix.Update(target);
     }
     ~Cascade()
     {
@@ -109,7 +175,7 @@ class Cascade {
   private:
     std::int32_t n;
     vec1D p;
-    Blend2LMS_L1 mix;
+    BlendLMS mix;
     RLS lm;
     std::vector<LS_Stream*> clms;
 };

@@ -8,7 +8,7 @@ std::int32_t SacProfile::LoadBaseProfile() {
   profile.Init(53);
 
   profile.Set(0, 0.99, 0.9999, 0.998);
-  profile.Set(1, 0.001, 10.0, 0.1);
+  profile.Set(1, 0.1, 10.0, 0.1);
 
   profile.Set(2, 0.001, 1.0, 0.1);  // mu0
   profile.Set(3, 0.001, 1.0, 0.12); // mu1
@@ -19,11 +19,11 @@ std::int32_t SacProfile::LoadBaseProfile() {
   profile.Set(7, 0.0, 1.0, 0.8); // pow-decay
   profile.Set(8, 0.0, 1.0, 0.8); // pow-decay
 
-  profile.Set(10, 0.0001, 0.008, 0.002); // mu-mix
+  profile.Set(10, 0.0005, 0.05, 0.005); // mu-mix
   profile.Set(11, 0.8, 0.9999, 0.95);    // mu-mix-beta
 
   profile.Set(12, 0.99, 0.9999, 0.998);
-  profile.Set(13, 0.001, 10.0, 0.1);
+  profile.Set(13, 0.1, 10.0, 0.1);
 
   profile.Set(14, 0.001, 1.0, 0.1);  // mu0
   profile.Set(15, 0.001, 1.0, 0.12); // mu1
@@ -34,7 +34,7 @@ std::int32_t SacProfile::LoadBaseProfile() {
   profile.Set(19, 0.0, 1.0, 0.8);        // pow-decay
   profile.Set(20, 0.0, 1.0, 0.8);        // pow-decay
   profile.Set(21, 0.0, 1.0, 0.8);        // pow-decay
-  profile.Set(22, 0.0001, 0.008, 0.002); // mu-mix
+  profile.Set(22, 0.0005, 0.008, 0.005); // mu-mix
   profile.Set(23, 0.8, 0.9999, 0.95);    // mu-mix-beta*/
 
   profile.Set(24, 4, mo_lpc, 16);      // nA
@@ -53,7 +53,7 @@ std::int32_t SacProfile::LoadBaseProfile() {
 
   profile.Set(34, 0, 1, 0.6);
   profile.Set(35, 0.1, 2, 0.8);
-  profile.Set(36, 0, 10, 2);
+  profile.Set(36, 0.1, 10, 2);
 
   profile.Set(37, 2, 1 << (wbits_lms - 3), 4); // stage 4
   profile.Set(38, 2, 1 << (wbits_lms - 3), 4);

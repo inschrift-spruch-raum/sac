@@ -1,9 +1,7 @@
-#ifndef RLS_H
-#define RLS_H
+#pragma once
 
 #include "../global.h"
 #include "../common/utils.h"
-#include <cmath>
 
 // adaptive lambda control
 template <miscUtils::MapMode tmap_mode>
@@ -38,16 +36,13 @@ class RLS {
   public:
     explicit RLS(std::int32_t n,double gamma,double nu=1);
     double Predict();
-    double Predict(const vec1D &pred);
     void Update(double val);
+    double Predict(const vec1D &input);
     void UpdateHist(double val);
     std::int32_t n;
   private:
     double px,gamma;
-    vec1D hist,w;
+    vec1D x,w;
     vec2D P;
     ALC<miscUtils::MapMode::exp> alc;
 };
-
-
-#endif

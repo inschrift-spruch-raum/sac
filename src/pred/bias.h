@@ -139,7 +139,7 @@ class BiasEstimator {
       miscUtils::RollBack(hist_input,val);
       miscUtils::RollBack(hist_delta,delta);
 
-      const auto [mean,var] = run_mv.get();
+      const auto [mean,var] = run_mv.Get();
 
       const double q=sigma*sqrt(var);
       const double lb=mean-q;
@@ -160,7 +160,7 @@ class BiasEstimator {
       }
     }
   private:
-    using MixerType = decltype(createMixer(0.0)); // Deduce the mixer type
+    using MixerType = decltype(createMixer(std::declval<double>())); // Deduce the mixer type
     std::vector<MixerType> mix_ada;
     vec1D hist_input,hist_delta;
     std::int32_t ctx0,ctx1,ctx2,mix_ctx;

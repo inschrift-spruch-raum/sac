@@ -6,7 +6,7 @@ OLS::OLS(int n,int kmax,double lambda,double nu,double beta_sum,double beta_pow,
 :x(n),
 chol(n),
 w(n),b(n),mcov(n,vec1D(n)),
-n(n),kmax(kmax),km(0), lambda(lambda),nu(n*nu),
+n(n),kmax(kmax),km(0), lambda(lambda),nu(n*nu*(1.0-lambda)),
 pred(0.0), beta_pow(beta_pow),beta_add(beta_add),esum(beta_sum)
 {
   if constexpr (INIT_COV) {
@@ -22,14 +22,15 @@ double OLS::Predict()
 
 void OLS::Update(double val)
 {
-  // update estimate of covariance matrix
+  //running geometric sum of absolute prediction error
   esum.Update(fabs(val-pred));
-  double c0=std::pow(esum.Get()+beta_add,-beta_pow);
+  //forgetting factor
+  double ff=(1.0-lambda)*std::pow(esum.Get()+beta_add,-beta_pow);
 
   for (std::int32_t j=0;j<n;j++) {
     // only update lower triangular
-    for (std::int32_t i=0;i<=j;i++) { mcov[j][i]=lambda*mcov[j][i]+c0*(x[j]*x[i]);}
-    b[j]=lambda*b[j]+c0*(x[j]*val);
+    for (std::int32_t i=0;i<=j;i++) { mcov[j][i]=lambda*mcov[j][i]+ff*(x[j]*x[i]);}
+    b[j]=lambda*b[j]+ff*(x[j]*val);
   }
 
   km++;
