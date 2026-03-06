@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "../global.h"
 #include "../common/math.h"
 #include "../common/utils.h"
@@ -32,40 +34,27 @@ class Blend2 {
     RunSumEMA rsum;
 };
 
-constexpr bool BLEND_MV = true;
+template<class T>
+concept StatType = requires(T s, double v) {
+    s.Update(v);
+    { s.Get() };
+};
 
-namespace detail {
-  inline double computeZScore(const RunMeanVar& r, double beta, double EPS) {
-    auto [mean, var] = r.Get();
-    return beta * mean / (std::sqrt(var) + EPS);
-  }
-
-  inline double
-  computeZScore(const RunSumEMA& r, double beta, double /*unused*/) {
-    return beta * r.Get(); // EPS 在此无意义，省略参数名
-  }
-
-  static auto createRuner(double alpha) {
-    if constexpr(BLEND_MV) {
-      return RunMeanVar(alpha);
-    } else {
-      return RunSumEMA(alpha);
-    }
-  }
-} // namespace detail
-
+template <StatType Stats>
 class BlendExp
 {
   static constexpr double EPS=1E-8;
   public:
     BlendExp(std::size_t n,double alpha,double beta)
-    :n_(n),beta(beta),px(0.0),
+    :n(n),beta(beta),
     x(n),w(n),zm(n),
-    rsum(n,detail::createRuner(alpha))
+    rsum(n,Stats(alpha))
     {
-      if(n != 0U) {
-        std::ranges::fill(w, 1.0 / static_cast<double>(n)); // init equal weight
+      if (n==0) {
+        throw std::invalid_argument("BlendExp: n must be >0");
       }
+      
+      std::ranges::fill(w,1.0 / static_cast<double>(n)); //init equal weight
     };
     double Predict(const vec1D &input)
     {
@@ -83,25 +72,34 @@ class BlendExp
     void UpdateScores(double target)
     {
       double loss_px = std::abs(target-px);
-      for (std::size_t i=0;i<n_;i++) {
+      for (std::size_t i=0;i<n;i++) {
         double loss_pi=std::abs(target-x[i]);
         // if score > 0 -> expert better then blend
         double score=(loss_px - loss_pi);
         rsum[i].Update(score);
       }
     }
+    double calculate_z(const Stats &st) const
+    {
+      if constexpr (std::is_same_v<Stats, RunMeanVar>) {
+        auto [mean,var] = st.Get();
+        return beta*mean/(std::sqrt(var)+EPS);
+      } else {
+        return beta*st.Get();
+      }
+    }
     // softmax w_i = exp(-beta * normalized_regret)
     void UpdateWeights()
     {
       double max_z = -std::numeric_limits<double>::infinity();
-      for (std::size_t i=0;i<n_;i++) {
-        zm[i] = detail::computeZScore(rsum[i], beta, EPS);
-        max_z = std::max(max_z, zm[i]);
+      for (std::size_t i=0;i<n;i++) {
+        zm[i] = calculate_z(rsum[i]);
+        max_z = std::max(max_z,zm[i]);
       }
 
       //best expert has highest z-score -> weight=exp(0)=1
       double total=0.0;
-      for (std::size_t i=0;i<n_;i++) {
+      for (std::size_t i=0;i<n;i++) {
         w[i] = std::exp(zm[i]-max_z);
         total += w[i];
       }
@@ -112,9 +110,8 @@ class BlendExp
       }
     }
 
-    std::size_t n_;
-    double beta,px;
+    std::size_t n;
+    double beta,px{0.0};
     vec1D x,w,zm;
-    using RunerType = decltype(detail::createRuner(std::declval<double>()));
-    std::vector <RunerType> rsum;
+    std::vector <Stats> rsum;
 };
