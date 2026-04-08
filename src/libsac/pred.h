@@ -1,11 +1,11 @@
-#ifndef PRED_H
-#define PRED_H
-
-#include "../pred/bias.h"
-#include "../pred/lms_cascade.h"
-#include "../pred/lpc.h"
+#pragma once // PRED_H
 
 #include <array>
+
+#include "../pred/ls.h"
+#include "../pred/cascade.h"
+#include "../pred/ols.h"
+#include "../pred/bias.h"
 
 class Predictor {
 public:
@@ -48,5 +48,3 @@ public:
   std::array<BiasEstimator, 2> be;
   std::array<double, 2> p_lpc, p_lms;
 };
-
-#endif // PRED_H

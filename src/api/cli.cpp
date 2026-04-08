@@ -5,6 +5,7 @@
 #include "../global.h"
 #include "lib.h"
 
+#include <cstdint>
 #include <ranges>
 #include <span>
 #include <string>
@@ -40,7 +41,7 @@ void Shell::HandleOptimizeParam(std::string_view val) {
     }
     if(vs.size() >= 4) { cfg.ocfg.optk = std::clamp(stoi(vs[3]), 1, 32); }
     if(cfg.ocfg.fraction > 0. && cfg.ocfg.maxnfunc > 0) {
-      cfg.optimize = 1;
+      cfg.optimize = 2;
     } else {
       cfg.optimize = 0;
     }
@@ -94,8 +95,8 @@ Shell::CreateParamHandlers() {
 
   // Optimization levels
   const auto set_optimization =
-    [](Shell& s, double fraction, std::int32_t maxnfunc, double sigma) {
-      s.cfg.optimize = 1;
+    [](Shell& s, std::int32_t optimize, double fraction, std::int32_t maxnfunc, double sigma) {
+      s.cfg.optimize = optimize;
       s.cfg.ocfg.fraction = fraction;
       s.cfg.ocfg.maxnfunc = maxnfunc;
       s.cfg.ocfg.sigma = sigma;
@@ -103,21 +104,21 @@ Shell::CreateParamHandlers() {
 
   handlers["--NORMAL"] = [](Shell& s, auto) { s.cfg.optimize = 0; };
   handlers["--HIGH"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 0.075, 100, 0.2);
+    set_optimization(s, 1, 0.075, 100, 0.2);
     s.cfg.ocfg.dds_cfg.c_fail_max = 30;
   };
   handlers["--VERYHIGH"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 0.2, 250, 0.2);
+    set_optimization(s, 1, 0.2, 250, 0.25);
   };
   handlers["--EXTRAHIGH"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 0.25, 500, 0.2);
+    set_optimization(s, 2, 0.25, 500, 0.25);
   };
   handlers["--BEST"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 0.5, 1250, 0.2);
+    set_optimization(s, 2, 0.5, 1000, 0.25);
     s.cfg.ocfg.optimize_cost = FrameCoder::SearchCost::Bitplane;
   };
   handlers["--INSANE"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 0.6, 1500, 0.25);
+    set_optimization(s, 2, 0.5, 1500, 0.25);
     s.cfg.ocfg.optimize_cost = FrameCoder::SearchCost::Bitplane;
   };
   handlers["--OPTIMIZE"] = [](Shell& s, auto val) {

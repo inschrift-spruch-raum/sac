@@ -17,16 +17,14 @@ using span_i32 = std::span<std::int32_t>;
 using span_ci32 = std::span<const std::int32_t>;
 using span_cf64 = std::span<const double>;
 
-constexpr std::string_view SAC_VERSION = "0.7.23";
+constexpr std::string_view SAC_VERSION = "0.7.24";
 
 #define TOSTRING_HELPER(x) #x
 #define TOSTRING(x) TOSTRING_HELPER(x)
 
 struct SACCfg {
-  static constexpr double NLMS_POW_EPS = 1.0;
-  static constexpr double LMS_ADA_EPS = 1E-5;
-  static constexpr bool LMS_MIX_INIT = true; // increase stability
-  static constexpr bool LMS_MIX_CLAMPW = false;
+  static constexpr double NLMS_POW_EPS=1.0;
+  static constexpr double LMS_ADA_EPS=1E-5;
 
   static constexpr bool NLMS_CLAMPW = true;
   static constexpr double NLMS_SCALE = 10;

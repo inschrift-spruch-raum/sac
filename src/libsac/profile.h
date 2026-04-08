@@ -79,8 +79,6 @@ public:
 
   void Init(std::int32_t numcoefs) { coefs.resize(numcoefs); }
 
-  explicit SacProfile(std::int32_t numcoefs): coefs(numcoefs) {}
-
   std::int32_t LoadBaseProfile();
 
   std::size_t get_size() const { return coefs.size(); };

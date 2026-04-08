@@ -140,7 +140,7 @@ class Codec {
 
 public:
   Codec() = default;
-  explicit Codec(FrameCoder::tsac_cfg& cfg): opt_(cfg) {};
+  explicit Codec(FrameCoder::tsac_cfg& sac_cfg):cfg(sac_cfg) {};
   std::int32_t EncodeFile(
     Wav<AudioFileBase::Mode::Read>& myWav,
     Sac<AudioFileBase::Mode::Write>& mySac
@@ -168,7 +168,7 @@ private:
   AnalyseSparse(std::span<const std::int32_t> buf);
   static void
   PrintProgress(std::int32_t samplesprocessed, std::int32_t totalsamples);
-  FrameCoder::tsac_cfg opt_;
+  FrameCoder::tsac_cfg cfg;
   // std::int32_t framesize;
 };
 

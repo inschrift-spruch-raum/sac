@@ -2,23 +2,20 @@
 
 #include "../global.h"
 #include "../common/utils.h"
-#include "lms.h"
+#include "ls.h"
 
 constexpr bool BIAS_ROUND_PRED = true;
 constexpr std::int32_t BIAS_MIX_N = 3;
 constexpr std::int32_t BIAS_MIX_NUMCTX = 4;
-constexpr std::int32_t BIAS_MIX_TYPE = 0;  // 0: SSLMS, 1: LAD_ADA, 2: LMS_ADA
+constexpr std::int32_t BIAS_MIX_TYPE = 0;  // 0: SSLMS, 1: LS_ADA
 constexpr std::int32_t BIAS_NAVG = 5;
-constexpr std::int32_t BIAS_CLAMPW = 0;
 
 // Helper function to create the appropriate mixer type
 static auto createMixer(double lms_mu) {
   if constexpr (BIAS_MIX_TYPE == 0) {
     return SSLMS(BIAS_MIX_N, lms_mu);
-  } else if constexpr (BIAS_MIX_TYPE == 1) {
-    return LAD_ADA(BIAS_MIX_N, lms_mu, 0.96);
-  } else {
-    return LMS_ADA(BIAS_MIX_N, lms_mu, 0.965, 0.005);
+  } else  {
+    return LS_ADA<Loss::L1,LSInitType::Uniform>(BIAS_MIX_N,lms_mu);
   }
 }
 
@@ -55,7 +52,7 @@ class BiasEstimator {
   public:
     BiasEstimator(double lms_mu=0.003,std::int32_t nb_scale=5,double nd_sigma=1.5,double nd_lambda=0.998)
     : mix_ada(BIAS_MIX_NUMCTX, createMixer(lms_mu)),
-      hist_input(8),hist_delta(8),
+      hist_input(8),hist_delta(8),pt(BIAS_MIX_N),
       cnt0(1<<6,CntAvg(nb_scale)),
       cnt1(1<<6,CntAvg(nb_scale)),
       cnt2(1<<6,CntAvg(nb_scale)),
@@ -63,7 +60,7 @@ class BiasEstimator {
       run_mv(nd_lambda)
     {
       ctx0=ctx1=ctx2=mix_ctx=0;
-      px=0.0;
+      px=pbias=0.0;
     }
 
     void CalcContext(double p)
@@ -123,11 +120,11 @@ class BiasEstimator {
 
       CalcContext(pred);
 
-      vec1D pb(BIAS_MIX_N);
-      pb[0]=cnt0[ctx0].get();
-      pb[1]=cnt1[ctx1].get();
-      pb[2]=cnt2[ctx2].get();
-      return pred+mix_ada[mix_ctx].Predict(pb);
+      pt[0]=cnt0[ctx0].get();
+      pt[1]=cnt1[ctx1].get();
+      pt[2]=cnt2[ctx2].get();
+      pbias=mix_ada[mix_ctx].Predict(pt);
+      return px+pbias;
     }
     void Update(double val) {
       double delta;
@@ -153,18 +150,14 @@ class BiasEstimator {
       }
 
       run_mv.Update(delta);
-      mix_ada[mix_ctx].Update(delta);
-      if constexpr(BIAS_CLAMPW == 1) {
-        for (std::int32_t i=0;i<BIAS_MIX_N;i++)
-          mix_ada[mix_ctx].w[i] = std::max(mix_ada[mix_ctx].w[i],0.);
-      }
+      mix_ada[mix_ctx].Update(pt,delta-pbias);
     }
   private:
     using MixerType = decltype(createMixer(std::declval<double>())); // Deduce the mixer type
     std::vector<MixerType> mix_ada;
-    vec1D hist_input,hist_delta;
+    vec1D hist_input,hist_delta,pt;
     std::int32_t ctx0,ctx1,ctx2,mix_ctx;
-    double px;
+    double px, pbias;
     //double alpha,p,bias0,bias1,bias2;
     std::vector<CntAvg> cnt0,cnt1,cnt2;
     const double sigma;
