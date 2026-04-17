@@ -15,14 +15,14 @@ static auto createMixer(double lms_mu) {
   if constexpr (BIAS_MIX_TYPE == 0) {
     return SSLMS(BIAS_MIX_N, lms_mu);
   } else  {
-    return LS_ADA<Loss::L1,LSInitType::Uniform>(BIAS_MIX_N,lms_mu);
+    return LS_ADA<Loss::L1,LSInitType::Zero>(BIAS_MIX_N,lms_mu);
   }
 }
 
 class BiasEstimator {
   class CntAvg {
     struct bias_cnt {
-      std::int32_t cnt;
+      double cnt;
       double val;
     };
     public:
@@ -36,12 +36,12 @@ class BiasEstimator {
       {
         return bias.val/double(bias.cnt);
       }
-      void update(double delta) {
-        bias.val+=delta;
-        bias.cnt++;
+      void update(double delta,double w) {
+        bias.val+=w*delta;
+        bias.cnt+=w;
         if (bias.cnt>=nscale) {
-          bias.val/=2.0;
-          bias.cnt>>=1;
+          bias.val*=0.5;
+          bias.cnt*=0.5;
         }
       }
     private:
@@ -50,7 +50,7 @@ class BiasEstimator {
   };
 
   public:
-    BiasEstimator(double lms_mu=0.003,std::int32_t nb_scale=5,double nd_sigma=1.5,double nd_lambda=0.998)
+    BiasEstimator(double lms_mu=0.003,std::int32_t nb_scale=5,double nd_sigma=0.5,double nd_lambda=0.998)
     : mix_ada(BIAS_MIX_NUMCTX, createMixer(lms_mu)),
       hist_input(8),hist_delta(8),pt(BIAS_MIX_N),
       cnt0(1<<6,CntAvg(nb_scale)),
@@ -66,7 +66,7 @@ class BiasEstimator {
     void CalcContext(double p)
     {
       std::int32_t b0=hist_input[0]>p?0:1;
-      //std::int32_t b1=hist_input[1]>p?0:1;
+      //int b1=((hist_input[0]+hist_input[1])/2.0)>p?0:1;
 
       std::int32_t b2=hist_delta[0]<0?0:1;
       std::int32_t b3=hist_delta[1]<0?0:1;
@@ -93,7 +93,6 @@ class BiasEstimator {
 
       ctx0=0;
       ctx0+=b0<<0;
-      //ctx0+=b1<<1;
       ctx0+=b2<<1;
       ctx0+=b9<<2;
       ctx0+=b10<<3;
@@ -124,6 +123,7 @@ class BiasEstimator {
       pt[1]=cnt1[ctx1].get();
       pt[2]=cnt2[ctx2].get();
       pbias=mix_ada[mix_ctx].Predict(pt);
+
       return px+pbias;
     }
     void Update(double val) {
@@ -136,18 +136,16 @@ class BiasEstimator {
       miscUtils::RollBack(hist_input,val);
       miscUtils::RollBack(hist_delta,delta);
 
-      const auto [mean,var] = run_mv.Get();
+      const auto [mean, var] = run_mv.Get();
 
-      const double q=sigma*sqrt(var);
-      const double lb=mean-q;
-      const double ub=mean+q;
+      // gaussian soft gating
+      double diff = delta - mean;
+      double z = diff * diff / (var + 1E-5);
+      double w = std::exp(-sigma * z);
 
-      if ( (delta>lb) && (delta<ub))
-      {
-        cnt0[ctx0].update(delta);
-        cnt1[ctx1].update(delta);
-        cnt2[ctx2].update(delta);
-      }
+      cnt0[ctx0].update(delta, w);
+      cnt1[ctx1].update(delta, w);
+      cnt2[ctx2].update(delta, w);
 
       run_mv.Update(delta);
       mix_ada[mix_ctx].Update(pt,delta-pbias);

@@ -494,11 +494,6 @@ void FrameCoder::Optimize(
     for(std::size_t i = 0; i < ndim; i++) {
       tmp_profile.coefs[params_to_optimize[i]].vdef = static_cast<float>(x[i]);
     }
-    if (cfg.optimize==1) { //ugly hack
-      tmp_profile.coefs[53] = tmp_profile.coefs[34];
-      tmp_profile.coefs[54] = tmp_profile.coefs[35];
-      tmp_profile.coefs[55] = tmp_profile.coefs[36];
-    }
 
     PredictFrame(tmp_profile, tmp_error, start_pos, samples_to_optimize, true);
     return GetCost(CostFunc, tmp_error, samples_to_optimize);
@@ -533,12 +528,6 @@ void FrameCoder::Optimize(
   for(std::size_t i = 0; i < ndim; i++) {
     profile.coefs[params_to_optimize[i]].vdef =
       static_cast<float>(ret.second[i]);
-  }
-  
-  if (cfg.optimize==1) {
-    profile.coefs[53] = profile.coefs[34];
-    profile.coefs[54] = profile.coefs[35];
-    profile.coefs[55] = profile.coefs[36];
   }
 
   if (cfg.verbose_level>0) {
@@ -587,11 +576,6 @@ void FrameCoder::Predict() {
     // optimize all params
     std::vector<std::int32_t> lparam_base(base_profile.coefs.size());
     std::iota(std::begin(lparam_base), std::end(lparam_base), 0);
-    if (cfg.optimize==1) {
-      std::erase(lparam_base,53);
-      std::erase(lparam_base,54);
-      std::erase(lparam_base,55);
-    }
 
     Optimize(cfg.ocfg, base_profile, lparam_base);
   }

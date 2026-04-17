@@ -64,15 +64,13 @@ std::int32_t SacProfile::LoadBaseProfile() {
 
   profile.Set(39, 0.98, 1, 1.0); // mu-decay
   profile.Set(40, 0.98, 1, 1.0); // mu-decay
-
   profile.Set(41, 1, 10, 4);     // stage-5 lm
   profile.Set(42, 0.1, 10.0, 5); // shape parameter gamma
 
   profile.Set(43, 0.001, 0.005, 0.0015); // bc-mu0
   profile.Set(44, 0.001, 0.005, 0.0015); // bc-mu1
 
-  profile.Set(45, 4, 10, 5); // bias scale in bits
-
+  profile.Set(45, 4, 10, 5);      // bias scale in bits
   profile.Set(46, 0.98, 1, 1.0);  // mu_decay
   profile.Set(48, 0.98, 1, 1.0);  // mu_decay
   profile.Set(50, 0.0, 1.0, 0.8); // pow_decay

@@ -41,7 +41,7 @@ void Shell::HandleOptimizeParam(std::string_view val) {
     }
     if(vs.size() >= 4) { cfg.ocfg.optk = std::clamp(stoi(vs[3]), 1, 32); }
     if(cfg.ocfg.fraction > 0. && cfg.ocfg.maxnfunc > 0) {
-      cfg.optimize = 2;
+      cfg.optimize = 1;
     } else {
       cfg.optimize = 0;
     }
@@ -111,14 +111,14 @@ Shell::CreateParamHandlers() {
     set_optimization(s, 1, 0.2, 250, 0.25);
   };
   handlers["--EXTRAHIGH"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 2, 0.25, 500, 0.25);
+    set_optimization(s, 1, 0.25, 500, 0.25);
   };
   handlers["--BEST"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 2, 0.5, 1000, 0.25);
+    set_optimization(s, 1, 0.5, 1000, 0.25);
     s.cfg.ocfg.optimize_cost = FrameCoder::SearchCost::Bitplane;
   };
   handlers["--INSANE"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 2, 0.5, 1500, 0.25);
+    set_optimization(s, 1, 0.5, 1500, 0.25);
     s.cfg.ocfg.optimize_cost = FrameCoder::SearchCost::Bitplane;
   };
   handlers["--OPTIMIZE"] = [](Shell& s, auto val) {
