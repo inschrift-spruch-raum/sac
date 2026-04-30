@@ -23,12 +23,12 @@ constexpr std::string_view SAC_VERSION = "0.7.24";
 #define TOSTRING(x) TOSTRING_HELPER(x)
 
 struct SACCfg {
+  static constexpr bool USE_LDLT=true; //LDL^T solver instead of cholesky
   static constexpr double NLMS_POW_EPS=1.0;
   static constexpr double LMS_ADA_EPS=1E-5;
 
   static constexpr bool NLMS_CLAMPW = true;
   static constexpr double NLMS_SCALE = 10;
-  static constexpr bool RLS_ALC = true; // adaptive lambda control
 };
 
 #ifdef __clang__

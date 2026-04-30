@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-Predictor::Predictor(const tparam& p):
+Predictor::Predictor(Range r0, Range r1, const tparam& p):
   p(p),
   nA(p.nA),
   nB(p.nB),
@@ -20,12 +20,12 @@ Predictor::Predictor(const tparam& p):
   },
   lms{
     Cascade(
-      p.vn0, p.vmu0, p.vmudecay0, p.vpowdecay0, p.mu_mix0, p.mu_mix_beta0,
-      p.lm_n, p.lm_alpha
+      r0, p.vn0, p.vmu0, p.vmudecay0, p.vpowdecay0, p.mu_mix0, p.mu_mix_beta0,
+      p.lm_n, p.lm_alpha, p.proj_alpha
     ),
     Cascade(
-      p.vn1, p.vmu1, p.vmudecay1, p.vpowdecay1, p.mu_mix1, p.mu_mix_beta1,
-      p.lm_n, p.lm_alpha
+      r1, p.vn1, p.vmu1, p.vmudecay1, p.vpowdecay1, p.mu_mix1, p.mu_mix_beta1,
+      p.lm_n, p.lm_alpha, p.proj_alpha
     )
   },
   be{

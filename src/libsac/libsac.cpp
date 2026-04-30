@@ -117,6 +117,8 @@ void FrameCoder::SetParam(
   param.beta_pow1 = profile.Get(54);
   param.beta_add1 = profile.Get(55);
 
+  param.proj_alpha = profile.Get(56);
+
   param.lm_n = static_cast<int32_t>(std::round(profile.Get(41)));
   param.lm_alpha = profile.Get(42);
 
@@ -139,7 +141,10 @@ void FrameCoder::PredictFrame(
 ) {
   Predictor::tparam param;
   SetParam(param, profile, optimize);
-  Predictor pr(param);
+  Range r0{.lo=framestats[0].minval,.hi=framestats[0].maxval};
+  Range r1=r0;if (numchannels_==2)r1={.lo=framestats[1].minval,.hi=framestats[1].maxval};
+
+  Predictor pr(r0,r1,param);
 
   auto eprocess = [&](
                     std::int32_t ch_p, std::int32_t ch, std::int32_t val,
@@ -190,7 +195,9 @@ void FrameCoder::UnpredictFrame(
 ) {
   Predictor::tparam param;
   SetParam(param, profile, false);
-  Predictor pr(param);
+  Range r0{.lo=framestats[0].minval,.hi=framestats[0].maxval};
+  Range r1=r0;if (numchannels_==2)r1={.lo=framestats[1].minval,.hi=framestats[1].maxval};
+  Predictor pr(r0,r1,param);
 
   auto dprocess = [&](
                     std::int32_t ch_p, std::int32_t ch,
@@ -414,6 +421,7 @@ void FrameCoder::PrintProfile(SacProfile& profile) {
             << " scale " << (1U << static_cast<std::uint32_t>(param.bias_scale0)) << ' '
             << (1U << static_cast<std::uint32_t>(param.bias_scale1)) << '\n';
   std::cout << "lm " << param.lm_n << " gamma " << param.lm_alpha << '\n';
+  std::cout << "proj alpha " << param.proj_alpha << '\n';
 }
 
 double FrameCoder::GetCost(
@@ -576,6 +584,7 @@ void FrameCoder::Predict() {
     // optimize all params
     std::vector<std::int32_t> lparam_base(base_profile.coefs.size());
     std::iota(std::begin(lparam_base), std::end(lparam_base), 0);
+    std::erase(lparam_base,56);
 
     Optimize(cfg.ocfg, base_profile, lparam_base);
   }

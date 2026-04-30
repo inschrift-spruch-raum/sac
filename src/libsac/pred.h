@@ -23,10 +23,10 @@ public:
     double bias_mu0, bias_mu1;
     std::int32_t bias_scale0, bias_scale1;
     std::int32_t lm_n;
-    double lm_alpha;
+    double lm_alpha, proj_alpha;
   };
 
-  explicit Predictor(const tparam& p);
+  explicit Predictor(Range r0,Range r1,const tparam &p);
 
   double predict(std::int32_t ch);
   void update(std::int32_t ch, double val);

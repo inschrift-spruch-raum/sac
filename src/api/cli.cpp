@@ -104,14 +104,13 @@ Shell::CreateParamHandlers() {
 
   handlers["--NORMAL"] = [](Shell& s, auto) { s.cfg.optimize = 0; };
   handlers["--HIGH"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 1, 0.075, 100, 0.2);
-    s.cfg.ocfg.dds_cfg.c_fail_max = 30;
+    set_optimization(s, 1, 0.1, 100, 0.2);
   };
   handlers["--VERYHIGH"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 1, 0.2, 250, 0.25);
+    set_optimization(s, 1, 0.2, 300, 0.25);
   };
   handlers["--EXTRAHIGH"] = [set_optimization](Shell& s, auto) {
-    set_optimization(s, 1, 0.25, 500, 0.25);
+    set_optimization(s, 1, 0.2, 600, 0.25);
   };
   handlers["--BEST"] = [set_optimization](Shell& s, auto) {
     set_optimization(s, 1, 0.5, 1000, 0.25);

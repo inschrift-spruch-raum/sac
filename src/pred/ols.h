@@ -12,10 +12,11 @@ class OLS {
     vec1D x;
   private:
     MathUtils::Cholesky chol;
+    MathUtils::LDLT ldlt;
     vec1D w,b;
     vec2D mcov;
     std::int32_t n,kmax,km;
     double lambda,nu,pred;
-    double beta_pow,beta_add;
+    double beta_pow,beta_add,w_decay;
     RunSumGEO esum;
 };
