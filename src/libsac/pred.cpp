@@ -21,11 +21,11 @@ Predictor::Predictor(Range r0, Range r1, const tparam& p):
   lms{
     Cascade(
       r0, p.vn0, p.vmu0, p.vmudecay0, p.vpowdecay0, p.mu_mix0, p.mu_mix_beta0,
-      p.lm_n, p.lm_alpha, p.proj_alpha
+      p.lm_n, p.lm_alpha, p.proj_alpha0
     ),
     Cascade(
       r1, p.vn1, p.vmu1, p.vmudecay1, p.vpowdecay1, p.mu_mix1, p.mu_mix_beta1,
-      p.lm_n, p.lm_alpha, p.proj_alpha
+      p.lm_n, p.lm_alpha, p.proj_alpha1
     )
   },
   be{

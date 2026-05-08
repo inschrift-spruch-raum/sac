@@ -1,33 +1,34 @@
 #pragma once
 
 #include "./model.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
 static class LogDomain {
   public:
-    std::int32_t min,max;
-    const std::int32_t scale,dbits,dscale,dmin,dmax;
-    LogDomain():scale(256),dbits(12),dscale(1<<dbits),dmin(-(dscale>>1)),dmax((dscale>>1)-1)
+    static constexpr int scale=256;
+    static constexpr int dbits=12;
+    static constexpr int dmin=-2047;
+    static constexpr int dmax=2047;
+    static constexpr int dscale=dmax-dmin+1;
+    int fmin,fmax;
+    LogDomain()
     {
       for (std::int32_t i=0;i<PSCALE;i++)
       {
-        FwdTbl[i]=std::floor(std::log((i+0.5)/(PSCALE-i-0.5))*double(scale)+0.5);
+        double f=std::max(i,1)/(double)PSCALE;
+        double q=std::log(f / (1.0-f))*scale;
+        FwdTbl[i]=static_cast<std::int32_t>(std::round(q));
       };
-      min=FwdTbl[0];
-      max=FwdTbl[PSCALE-1];
-      //printf("%i %i\n",min,max);
+      fmin=FwdTbl[0];
+      fmax=FwdTbl[PSCALE-1];
       // 12-Bit
-      InvTbl=new std::int32_t[dscale];
       for (std::int32_t i=dmin;i<=dmax;i++)
       {
-         double p=double(PSCALE)/(1.0+std::exp(-double(i)/double(scale)));
-         InvTbl[i-dmin]=std::floor(p);
+        double q=PSCALE/(1.0+std::exp(-double(i)/double(scale)));
+        InvTbl[i-dmin]=(int)std::round(q);
       };
-    }
-    ~LogDomain()
-    {
-      delete []InvTbl;
     }
     inline std::int32_t Fwd(std::int32_t p)
     {
@@ -35,24 +36,21 @@ static class LogDomain {
     }
     inline std::int32_t Inv(std::int32_t x)
     {
-       if (x<dmin) return 0;
-       else if (x>dmax) return PSCALE-1;
+       if (x<dmin) return 1;
+       else if (x>dmax) return PSCALEm;
        else return InvTbl[x-dmin];
     }
     void Check()
     {
       std::int32_t sum=0;
-      std::printf("%i %i\n",min,max);
-      std::printf("%i  [%i %i]\n",dscale,dmin,dmax);
-      std::printf("%i %i\n",Inv(0),Fwd(PSCALEh));
       for (std::int32_t i=0;i<PSCALE;i++)
       {
         std::int32_t p=Inv(Fwd(i));
         sum+=(p-i)*(p-i);
       }
-      std::printf(" mse: %0.2f\n",double(sum)/double(PSCALE));
+      std::printf(" mse: %0.4f\n",double(sum)/double(PSCALE));
     }
   protected:
     std::int32_t FwdTbl[PSCALE];
-    std::int32_t *InvTbl;
+    std::int32_t InvTbl[dscale];
 } myDomain;

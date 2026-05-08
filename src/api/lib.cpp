@@ -76,7 +76,7 @@ std::expected<void, AudioFileErr::Err> Lib::Encode(
   std::cout << "Open: '" << input << "': ";
   std::optional<Wav<AudioFileBase::Mode::Read>> myWavOpt;
   try {
-    myWavOpt.emplace(input, config.verbose_level > 0);
+    myWavOpt.emplace(input, config.verbose_level > 1);
   } catch(AudioFileErr& Err) { return std::unexpected(Err.err); }
 
   auto& myWav = myWavOpt.value();

@@ -11,7 +11,7 @@ public:
   std::int32_t tscale, xscale;
   std::uint16_t p_quant;
 
-  SSENL(std::int32_t scale = myDomain.max):
+  SSENL(std::int32_t scale = myDomain.fmax):
     tscale(scale),
     xscale((2 * tscale) / (N - 1)) {
     if(xscale == 0) xscale = 1;
@@ -24,8 +24,7 @@ public:
   };
 
   std::int32_t Predict(std::int32_t p1) {
-    std::int32_t pq =
-      (std::min)(2 * tscale, (std::max)(0, myDomain.Fwd(p1) + tscale));
+    std::int32_t pq = std::clamp(myDomain.Fwd(p1)+tscale,0,2*tscale);
 
     p_quant = pq / xscale;
     std::int32_t p_mod = pq - (p_quant * xscale); //%xscale;
