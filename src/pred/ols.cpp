@@ -1,6 +1,6 @@
 #include "ols.h"
 
-//#define INIT_COV
+static constexpr bool INIT_COV = false;
 
 //ordinary least squares using cholesky decomposition
 //on a (weighted) covariance matrix estimate of input vectors
@@ -14,9 +14,11 @@ esum(beta_sum),
 pred(0.)
 {
   km=0;
-  #ifdef INIT_COV
-    for (int i=0;i<n;i++) mcov[i][i]=nu;
-  #endif
+  if constexpr (INIT_COV) {
+    for (int i=0;i<n;i++) {
+      mcov[i][i]=nu;
+    }
+  }
 }
 
 double OLS::Predict()

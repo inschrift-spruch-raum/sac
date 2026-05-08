@@ -17,7 +17,7 @@ using span_i32 = std::span<std::int32_t>;
 using span_ci32 = std::span<const std::int32_t>;
 using span_cf64 = std::span<const double>;
 
-constexpr std::string_view SAC_VERSION = "0.7.24";
+constexpr std::string_view SAC_VERSION = "0.7.25";
 
 #define TOSTRING_HELPER(x) #x
 #define TOSTRING(x) TOSTRING_HELPER(x)
