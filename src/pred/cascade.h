@@ -98,7 +98,7 @@ class Cascade {
     void Update(const double target)
     {
       //project residuals
-      double p_prefix=0.0; //0,p_tot=0.0;
+      double p_prefix=0.0;
       for (int i=0;i<=n;i++)
       {
         //target for stage i
