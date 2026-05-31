@@ -55,13 +55,9 @@ class BlendExp
     }*/
     void UpdateScores(double target)
     {
-      //double loss_px = std::abs(target-px);
-
       for (std::size_t i=0;i<n;i++) {
         double loss_pi=std::abs(target-x[i]);
-        // if score > 0 -> expert better then blend
-        //double score=(loss_px - loss_pi);
-        rsum[i].Update(-loss_pi);
+        rsum[i].Update(loss_pi);
       }
     }
     double calculate_z(const Stats &st) const
@@ -73,19 +69,18 @@ class BlendExp
         return beta*st.Get();
       }
     }
-    // softmax w_i = exp(-beta * normalized_regret)
+    // softmax w_i = exp(beta*z)
     void UpdateWeights()
     {
-      double max_z = -std::numeric_limits<double>::infinity();
+      double min_z = std::numeric_limits<double>::infinity();
       for (std::size_t i=0;i<n;i++) {
         zm[i] = calculate_z(rsum[i]);
-        max_z = std::max(max_z,zm[i]);
+        min_z = std::min(min_z,zm[i]);
       }
-
       //best expert has highest z-score -> weight=exp(0)=1
       double total=0.0;
       for (std::size_t i=0;i<n;i++) {
-        w[i] = std::exp(zm[i]-max_z);
+        w[i] = std::exp(min_z-zm[i]);
         total += w[i];
       }
       //normalize weights, total >= 1 from max-trick
@@ -94,7 +89,6 @@ class BlendExp
         val *= inv_total;
       }
     }
-
     std::size_t n;
     double beta,px{0.0};
     vec1D x,w,zm;

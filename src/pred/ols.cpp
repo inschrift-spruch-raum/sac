@@ -6,7 +6,7 @@ static constexpr bool INIT_COV = false;
 //on a (weighted) covariance matrix estimate of input vectors
 OLS::OLS(int n,int kmax,double lambda,double nu,double beta_sum,double beta_pow,double beta_add)
 :x(n),
-chol(n),ldlt(n),
+decomp(n),
 w(n),b(n),mcov(n,vec1D(n)),
 n(n),kmax(kmax),lambda(lambda),nu((1.0-lambda)*nu),
 beta_pow(beta_pow),beta_add(beta_add),
@@ -47,12 +47,8 @@ void OLS::Update(double val)
   }
   km++;
   if (km>=kmax) {
-    if constexpr(SACCfg::USE_LDLT) {
-      if (ldlt.Factor(mcov,nu))
-        ldlt.Solve(b,w);
-    } else {
-      if (chol.Factor(mcov,nu))
-        chol.Solve(b,w);
+    if (decomp.Factor(mcov,nu)) {
+      decomp.Solve(b,w);
     }
     km=0;
   }

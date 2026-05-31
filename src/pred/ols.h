@@ -1,8 +1,8 @@
 #pragma once // LPC_H
 
+#include <type_traits>
 #include "../common/utils.h"
 #include "../common/math.h"
-
 
 class OLS {
   public:
@@ -11,12 +11,16 @@ class OLS {
     void Update(double val);
     vec1D x;
   private:
-    MathUtils::Cholesky chol;
-    MathUtils::LDLT ldlt;
+    using Decomp = std::conditional_t<
+      SACCfg::USE_LDLT,
+      slmath::LDLT,
+      slmath::Cholesky
+    >;
+    Decomp decomp;
     vec1D w,b;
     vec2D mcov;
     std::int32_t n,kmax,km;
-    double lambda,nu,pred;
-    double beta_pow,beta_add,w_decay;
+    double lambda,nu;
+    double beta_pow,beta_add;
     RunSumGEO esum;
 };
