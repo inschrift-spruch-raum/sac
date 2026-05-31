@@ -43,7 +43,7 @@ void AudioFile<AudioFileBase::Mode::Read>::Read(
 ) {
   if(data.size() < len) { data.resize(len); }
   file.read(
-    reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(len)
+    std::bit_cast<char*>(data.data()), static_cast<std::streamsize>(len)
   );
 }
 
@@ -85,7 +85,7 @@ void AudioFile<AudioFileBase::Mode::Write>::Write(
   const std::vector<std::uint8_t>& data, std::size_t len
 ) {
   file.write(
-    reinterpret_cast<const char*>(data.data()),
+    std::bit_cast<const char*>(data.data()),
     static_cast<std::streamsize>(len)
   );
 }

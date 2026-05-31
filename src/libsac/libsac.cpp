@@ -687,7 +687,7 @@ std::int32_t FrameCoder::WriteBlockHeader(
     flag |= static_cast<uint32_t>(framestats[ch].maxbpn);
   }
   BitUtils::put16LH(std::span<std::uint8_t, 2>(&buf[16], 2), flag);
-  file.write(reinterpret_cast<char*>(buf.data()), 18);
+  file.write(std::bit_cast<char*>(buf.data()), 18);
   return 18;
 }
 
@@ -696,7 +696,7 @@ std::int32_t FrameCoder::ReadBlockHeader(
   std::int32_t ch
 ) {
   std::array<std::uint8_t, 32> buf{};
-  file.read(reinterpret_cast<char*>(buf.data()), 18);
+  file.read(std::bit_cast<char*>(buf.data()), 18);
 
   framestats[ch].blocksize = static_cast<std::int32_t>(
     BitUtils::get32LH(std::span<std::uint8_t, 4>(buf.data(), 4))
@@ -720,11 +720,11 @@ std::int32_t FrameCoder::ReadBlockHeader(
 void FrameCoder::WriteEncoded(AudioFile<AudioFileBase::Mode::Write>& fout) {
   std::array<std::uint8_t, 12> buf{};
   BitUtils::put32LH(std::span<std::uint8_t, 4>(buf.data(), 4), numsamples_);
-  fout.file.write(reinterpret_cast<char*>(buf.data()), 4);
+  fout.file.write(std::bit_cast<char*>(buf.data()), 4);
   std::vector<std::uint8_t> profile_buf(profile_size_bytes_);
   EncodeProfile(base_profile, profile_buf);
   fout.file.write(
-    reinterpret_cast<char*>(profile_buf.data()), profile_size_bytes_
+    std::bit_cast<char*>(profile_buf.data()), profile_size_bytes_
   );
   for(std::int32_t ch = 0; ch < numchannels_; ch++) {
     framestats[ch].blocksize = static_cast<int32_t>(encoded[ch].GetBufPos());
@@ -735,13 +735,13 @@ void FrameCoder::WriteEncoded(AudioFile<AudioFileBase::Mode::Write>& fout) {
 
 void FrameCoder::ReadEncoded(AudioFile<AudioFileBase::Mode::Read>& fin) {
   std::array<std::uint8_t, 8> buf{};
-  fin.file.read(reinterpret_cast<char*>(buf.data()), 4);
+  fin.file.read(std::bit_cast<char*>(buf.data()), 4);
   numsamples_ = static_cast<int32_t>(
     BitUtils::get32LH(std::span<std::uint8_t, 4>(buf.data(), 4))
   );
   std::vector<std::uint8_t> profile_buf(profile_size_bytes_);
   fin.file.read(
-    reinterpret_cast<char*>(profile_buf.data()), profile_size_bytes_
+    std::bit_cast<char*>(profile_buf.data()), profile_size_bytes_
   );
   DecodeProfile(base_profile, profile_buf);
 
@@ -837,7 +837,7 @@ void Codec::ScanFrames(Sac<AudioFileBase::Mode::Read>& mySac) {
   std::int32_t block_hdr_size = 0;
   while(mySac.file.tellg() < fsize) {
     std::array<std::uint8_t, 12> buf{};
-    mySac.file.read(reinterpret_cast<char*>(buf.data()), 4);
+    mySac.file.read(std::bit_cast<char*>(buf.data()), 4);
     std::int32_t numsamples = static_cast<std::int32_t>(
       BitUtils::get32LH(std::span<std::uint8_t, 4>(buf.data(), 4))
     );

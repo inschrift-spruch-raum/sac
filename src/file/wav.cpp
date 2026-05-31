@@ -116,7 +116,7 @@ Wav<AudioFileBase::Mode::Read>::ReadHeader() {
   std::uint32_t chunksize = 0;
 
   file.read(
-    reinterpret_cast<char*>(buf.data()), 12
+    std::bit_cast<char*>(buf.data()), 12
   ); // read 'RIFF' chunk descriptor
   chunkid = BitUtils::get32LH(std::span<std::uint8_t, 4>(buf.data(), 4));
   chunksize = BitUtils::get32LH(std::span<std::uint8_t, 4>(&buf[4], 4));
@@ -129,7 +129,7 @@ Wav<AudioFileBase::Mode::Read>::ReadHeader() {
       chunkid, chunksize, std::span<const std::uint8_t>{&buf[8], 4}
     );
     while(true) {
-      file.read(reinterpret_cast<char*>(buf.data()), 8);
+      file.read(std::bit_cast<char*>(buf.data()), 8);
       if(!file) {
         std::cout << "could not read!\n";
         return std::unexpected(AudioFileErr::Err::ReadFail);
@@ -143,7 +143,7 @@ Wav<AudioFileBase::Mode::Read>::ReadHeader() {
                     << ")\n";
           return std::unexpected(AudioFileErr::Err::IllegalWav);
         }
-        file.read(reinterpret_cast<char*>(buf.data()), chunksize);
+        file.read(std::bit_cast<char*>(buf.data()), chunksize);
         myChunks.Append(
           chunkid, chunksize,
           std::span<const std::uint8_t>{buf.data(), chunksize}
@@ -259,7 +259,7 @@ std::int32_t Wav<AudioFileBase::Mode::Read>::ReadSamples(
   // read samples
   samplestoread = std::min(samplestoread, samplesleft);
   std::int32_t bytestoread = samplestoread * blockalign;
-  file.read(reinterpret_cast<char*>(filebuffer.data()), bytestoread);
+  file.read(std::bit_cast<char*>(filebuffer.data()), bytestoread);
   auto bytesread = static_cast<std::int32_t>(file.gcount());
   std::int32_t samplesread = bytesread / blockalign;
 
@@ -331,7 +331,7 @@ void Wav<AudioFileBase::Mode::Write>::WriteHeader() {
     const Chunks::tChunk& chunk = myChunks.wavchunks[chunkpos++];
     BitUtils::put32LH(std::span<std::uint8_t, 4>(buf.data(), 4), chunk.id);
     BitUtils::put32LH(std::span<std::uint8_t, 4>(&buf[4], 4), chunk.csize);
-    file.write(reinterpret_cast<char*>(buf.data()), 8);
+    file.write(std::bit_cast<char*>(buf.data()), 8);
     if(chunk.id == 0x61746164) { break; }
     if(verbose) { std::cout << " chunk size " << chunk.data.size() << '\n'; }
     Write(chunk.data, chunk.data.size());
@@ -380,7 +380,7 @@ std::int32_t Wav<AudioFileBase::Mode::Write>::WriteSamples(
     }
   }
   std::int32_t bytestowrite = samplestowrite * blockalign;
-  file.write(reinterpret_cast<char*>(filebuffer.data()), bytestowrite);
+  file.write(std::bit_cast<char*>(filebuffer.data()), bytestowrite);
 
   MD5::Update(&md5ctx, filebuffer, bytestowrite);
   return bytestowrite;

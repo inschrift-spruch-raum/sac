@@ -22,7 +22,7 @@ Sac<AudioFileBase::Mode::Read>::Sac(const std::string& fname) try:
 std::expected<void, AudioFileErr::Err>
 Sac<AudioFileBase::Mode::Read>::ReadHeader() {
   std::array<std::uint8_t, 32> buf{};
-  file.read(reinterpret_cast<char*>(buf.data()), 22);
+  file.read(std::bit_cast<char*>(buf.data()), 22);
 
   if(buf[0] != 'S' || buf[1] != 'A' || buf[2] != 'C' || buf[3] != '2') {
     return std::unexpected(AudioFileErr::Err::IllegalSac);
@@ -46,7 +46,7 @@ Sac<AudioFileBase::Mode::Read>::ReadHeader() {
 }
 
 void Sac<AudioFileBase::Mode::Read>::ReadMD5(std::span<std::uint8_t, 16> digest) {
-    file.read(reinterpret_cast<char*>(digest.data()), 16);
+    file.read(std::bit_cast<char*>(digest.data()), 16);
 }
 
 
@@ -77,7 +77,7 @@ void Sac<AudioFileBase::Mode::Write>::WriteHeader(
   // write wav meta data
   const std::uint32_t metadatasize = myChunks.GetMetaDataSize();
   BitUtils::put32LH(std::span<std::uint8_t, 4>(&buf[18], 4), metadatasize);
-  file.write(reinterpret_cast<char*>(buf.data()), 22);
+  file.write(std::bit_cast<char*>(buf.data()), 22);
   if(myChunks.PackMetaData(metadata) != metadatasize) {
     std::cerr << "  warning: metadatasize mismatch\n";
   }
@@ -85,5 +85,5 @@ void Sac<AudioFileBase::Mode::Write>::WriteHeader(
 }
 
 void Sac<AudioFileBase::Mode::Write>::WriteMD5(std::span<std::uint8_t, 16> digest) {
-  file.write(reinterpret_cast<char*>(digest.data()), 16);
+  file.write(std::bit_cast<char*>(digest.data()), 16);
 }
