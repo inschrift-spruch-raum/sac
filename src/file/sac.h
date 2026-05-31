@@ -37,7 +37,7 @@ public:
   explicit Sac(const std::string& fname);
 
   std::expected<void, AudioFileErr::Err> ReadHeader();
-  void ReadMD5(std::uint8_t digest[16]);
+  void ReadMD5(std::span<std::uint8_t, 16> digest);
 };
 
 template<>
@@ -48,5 +48,5 @@ public:
   Sac(const std::string& fname, AudioFile<AudioFileBase::Mode::Read>& file);
 
   void WriteHeader(Wav<AudioFileBase::Mode::Read>& myWav);
-  void WriteMD5(std::uint8_t digest[16]);
+  void WriteMD5(std::span<std::uint8_t, 16> digest);
 };

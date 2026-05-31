@@ -45,9 +45,10 @@ Sac<AudioFileBase::Mode::Read>::ReadHeader() {
   return {};
 }
 
-void Sac<AudioFileBase::Mode::Read>::ReadMD5(std::uint8_t digest[16]) {
-  file.read(reinterpret_cast<char*>(digest), 16);
+void Sac<AudioFileBase::Mode::Read>::ReadMD5(std::span<std::uint8_t, 16> digest) {
+    file.read(reinterpret_cast<char*>(digest.data()), 16);
 }
+
 
 // Write
 Sac<AudioFileBase::Mode::Write>::Sac(
@@ -83,6 +84,6 @@ void Sac<AudioFileBase::Mode::Write>::WriteHeader(
   Write(metadata, metadatasize);
 }
 
-void Sac<AudioFileBase::Mode::Write>::WriteMD5(std::uint8_t digest[16]) {
-  file.write(reinterpret_cast<char*>(digest), 16);
+void Sac<AudioFileBase::Mode::Write>::WriteMD5(std::span<std::uint8_t, 16> digest) {
+  file.write(reinterpret_cast<char*>(digest.data()), 16);
 }

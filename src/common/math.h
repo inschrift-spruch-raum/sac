@@ -33,11 +33,13 @@ namespace MathUtils {
 
         for (int j = 0; j < n; ++j) {
           double dj = A[j][j] + nu;
-          for (int k = 0; k < j; ++k)
+          for (int k = 0; k < j; ++k) {
             dj -= L[j][k] * L[j][k] * D[k];
+          }
 
-          if (dj < eps)
+          if (dj < eps) {
             return false;
+          }
 
           const double invDj = 1.0/dj;
           D[j] = dj;
@@ -45,8 +47,9 @@ namespace MathUtils {
 
           for (int i = j + 1; i < n; ++i) {
             double lij = A[i][j];
-            for (int k = 0; k < j; ++k)
+            for (int k = 0; k < j; ++k) {
               lij -= L[i][k] * L[j][k] * D[k];
+            }
             L[i][j] = lij * invDj;
           }
         }
@@ -57,20 +60,23 @@ namespace MathUtils {
         // Solve L y = b
         for (int i = 0; i < n; ++i) {
           double s = b[i];
-          for (int k = 0; k < i; ++k)
+          for (int k = 0; k < i; ++k) {
             s -= L[i][k] * y[k];
+          }
           y[i] = s;
         }
 
         // Solve D z = y
-        for (int i = 0; i < n; ++i)
+        for (int i = 0; i < n; ++i) {
           z[i] = y[i] * invD[i];
+        }
 
         // Solve L^T x = z
         for (int i = n - 1; i >= 0; --i) {
           double s = z[i];
-          for (int k = i + 1; k < n; ++k)
+          for (int k = i + 1; k < n; ++k) {
             s -= L[k][i] * x[k];
+          }
           x[i] = s;
         }
       }

@@ -143,7 +143,9 @@ void FrameCoder::PredictFrame(
   Predictor::tparam param;
   SetParam(param, profile, optimize);
   Range r0{.lo=framestats[0].minval,.hi=framestats[0].maxval};
-  Range r1=r0;if (numchannels_==2)r1={.lo=framestats[1].minval,.hi=framestats[1].maxval};
+  Range r1=r0;if (numchannels_==2) {
+    r1={.lo=framestats[1].minval,.hi=framestats[1].maxval};
+  }
 
   Predictor pr(r0,r1,param);
 
@@ -197,7 +199,9 @@ void FrameCoder::UnpredictFrame(
   Predictor::tparam param;
   SetParam(param, profile, false);
   Range r0{.lo=framestats[0].minval,.hi=framestats[0].maxval};
-  Range r1=r0;if (numchannels_==2)r1={.lo=framestats[1].minval,.hi=framestats[1].maxval};
+  Range r1=r0;if (numchannels_==2) {
+    r1={.lo=framestats[1].minval,.hi=framestats[1].maxval};
+  }
   Predictor pr(r0,r1,param);
 
   auto dprocess = [&](
@@ -985,7 +989,7 @@ std::int32_t Codec::EncodeFile(
 
   mySac.WriteHeader(myWav);
   std::streampos hdrpos = mySac.file.tellg();
-  mySac.WriteMD5(myWav.md5ctx.digest.data());
+  mySac.WriteMD5(myWav.md5ctx.digest);
   myWav.InitFileBuf(max_framesize);
 
   Timer gtimer;
@@ -1062,7 +1066,7 @@ std::int32_t Codec::EncodeFile(
 
   std::streampos eofpos = mySac.file.tellg();
   mySac.file.seekg(hdrpos);
-  mySac.WriteMD5(myWav.md5ctx.digest.data());
+  mySac.WriteMD5(myWav.md5ctx.digest);
   mySac.file.seekg(eofpos);
   return 0;
 }

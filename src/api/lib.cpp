@@ -150,7 +150,7 @@ std::expected<void, AudioFileErr::Err> Lib::Decode(
   std::cout << "ok (" << FileSizeSAC << " Bytes)\n";
 
   std::array<std::uint8_t, 16> md5digest{};
-  mySac.ReadMD5(md5digest.data());
+  mySac.ReadMD5(md5digest);
   double bps =
     (static_cast<double>(FileSizeSAC) * 8.0)
     / static_cast<double>(mySac.getNumSamples() * mySac.getNumChannels());
@@ -223,7 +223,7 @@ Lib::List(const std::string& input, FrameCoder::tsac_cfg& config, bool full) {
   std::cout << "ok (" << FileSizeSAC << " Bytes)\n";
 
   std::array<std::uint8_t, 16> md5digest{};
-  mySac.ReadMD5(md5digest.data());
+  mySac.ReadMD5(md5digest);
   double bps =
     (static_cast<double>(FileSizeSAC) * 8.0)
     / static_cast<double>(mySac.getNumSamples() * mySac.getNumChannels());
