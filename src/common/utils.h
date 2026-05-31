@@ -93,6 +93,36 @@ protected:
   double mean_, var_;
 };
 
+//pearson-correlation of two variables
+class RunCorr {
+  static constexpr double eps=1E-8;
+  public:
+    RunCorr(double alpha)
+    :alpha(alpha),alpha1(1.0-alpha)
+    {
+      ex=ey=ex2=ey2=exy=0.0;
+    }
+    void Update(double x,double y)
+    {
+      ex = alpha*ex + alpha1*x;
+      ey = alpha*ey + alpha1*y;
+      ex2= alpha*ex2+ alpha1*(x*x);
+      ey2= alpha*ey2+ alpha1*(y*y);
+      exy= alpha*exy+ alpha1*(x*y);
+    }
+    double Get() {
+      double vx=ex2-ex*ex;
+      double vy=ey2-ey*ey;
+      double cov=exy - ex*ey;
+      if (vx <= eps || vy <= eps)
+        return 0.0;
+      return std::clamp(cov / std::sqrt(vx*vy),-1.0,+1.0);
+    }
+  private:
+    double alpha,alpha1;
+    double ex,ey,ex2,ey2,exy;
+};
+
 namespace StrUtils {
   inline void StrUpper(std::string& str) {
     std::transform(str.begin(), str.end(), str.begin(), ::toupper);
