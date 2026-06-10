@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <variant>
-#include "map.h"
+#include "sparse.h"
 #include "pred.h"
 
 class SACProfile {
@@ -12,7 +12,6 @@ class SACProfile {
       int maxbpn,maxbpn_map;
       bool enc_mapped;
       int32_t blocksize,minval,maxval,mean;
-      Remap mymap;
     };
     struct elem {
       float vmin,vmax;
@@ -64,7 +63,7 @@ class SacProfile {
       int maxbpn,maxbpn_map;
       bool enc_mapped;
       int32_t blocksize,minval,maxval,mean;
-      Remap mymap;
+      SparsePCM pcm_map;
     };
 
     struct coef {

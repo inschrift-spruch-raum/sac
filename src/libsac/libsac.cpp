@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <format>
 #include <thread>
 #include <future>
 
 #include "libsac.h"
 #include "pred.h"
 #include "sparse.h"
+#include "bmap.h"
 #include "../common/timer.h"
 #include "../opt/dds.h"
 #include "../opt/de.h"
@@ -153,10 +155,11 @@ void FrameCoder::UnpredictFrame(const SacProfile &profile,int numsamples)
     const double pd=pr.predict(ch_p);
     const int32_t pi=std::clamp((int32_t)round(pd),framestats[ch].minval,framestats[ch].maxval);
 
-
-    if (framestats[ch].enc_mapped)
-      dst[idx]=pi+framestats[ch].mymap.Unmap(pi+framestats[ch].mean,error[ch][idx]);
-    else
+    if (framestats[ch].enc_mapped) {
+      //dst[idx]=pi+framestats[ch].mymap.Unmap(pi+framestats[ch].mean,error[ch][idx]);
+      int32_t mval=framestats[ch].pcm_map.Unmap(error[ch][idx],pi+framestats[ch].mean);
+      dst[idx]=pi+mval;
+    } else
       dst[idx]=pi+error[ch][idx];
 
     pr.update(ch_p,dst[idx]);
@@ -220,8 +223,25 @@ int FrameCoder::EncodeMonoFrame_Mapped(int ch,int numsamples,BufIO &buf)
 
   BitplaneCoder bc(framestats[ch].maxbpn_map,numsamples);
 
-  MapEncoder me(rc,framestats[ch].mymap.usedl,framestats[ch].mymap.usedh);
-  me.Encode();
+  #if 0
+    MapEncoder me(rc,framestats[ch].mymap.usedl,framestats[ch].mymap.usedh);
+    me.Encode();
+  #endif
+
+  BMap bm(rc);
+  auto &pcm=framestats[ch].pcm_map;
+  BIntMap bmap(pcm.used,pcm.minval,pcm.maxval);
+  //fix: check if pcm_map of ch0 is available for ch1
+  BIntMap bmap_ref=(ch==0)
+    ?BIntMap()
+    :BIntMap(); //framestats[0].pcm_map.used,framestats[0].pcm_map.minval,framestats[0].pcm_map.maxval);
+
+  bm.Encode(bmap,bmap_ref);
+  if (cfg.verbose_level>0 && std::size(pcm.used)) {
+    double r=buf.GetBufPos()*800.0/std::size(pcm.used);
+    std::cout << "  map_enc ch" << ch << " " << std::size(pcm.used) << " -> " << buf.GetBufPos() << "b (" << std::format("{:0.1f}",r) << "%)\n";
+  }
+
   bc.Encode(rc.encode_p1,&(s2u_error_map[ch][0]));
   rc.Stop();
   return buf.GetBufPos();
@@ -232,7 +252,18 @@ double FrameCoder::CalcRemapError(int ch, int numsamples)
     std::vector<int32_t>emap(numsamples);
     int32_t emax_map=0;
     for (int i=0;i<numsamples;i++) {
-      int32_t map_e=framestats[ch].mymap.Map(pred[ch][i],error[ch][i]);
+      int e=error[ch][i],p=pred[ch][i];
+      //int32_t map_e=framestats[ch].mymap.Map(p,e);
+
+      int32_t map_spcm=framestats[ch].pcm_map.Map(e,p);
+      //if (map_e != map_spcm)
+      //  std::cerr << "error in map: " << map_e << ' ' << map_spcm << '\n';
+      int32_t unmap_e=framestats[ch].pcm_map.Unmap(map_spcm,p);
+      if (e!=unmap_e)
+        std::cerr << "error: pcm_map (" << e << ' ' << unmap_e << ")\n";
+
+      int32_t map_e = map_spcm;
+
       int32_t map_ue=MathUtils::S2U(map_e);
       emap[i]=map_e;
       s2u_error_map[ch][i]=map_ue;
@@ -241,7 +272,6 @@ double FrameCoder::CalcRemapError(int ch, int numsamples)
     framestats[ch].maxbpn_map=MathUtils::iLog2(emax_map);
 
     CostL1 cost;
-
     double ent1 = cost.Calc(std::span{&error[ch][0],static_cast<unsigned>(numsamples)});
     double ent2 = cost.Calc(std::span{&emap[0],static_cast<unsigned>(numsamples)});
     double r=1.0;
@@ -286,12 +316,27 @@ void FrameCoder::DecodeMonoFrame(int ch,int numsamples)
   RangeCoderSH rc(buf,1);
   rc.Init();
   if (framestats[ch].enc_mapped) {
-    framestats[ch].mymap.Reset();
-    MapEncoder me(rc,framestats[ch].mymap.usedl,framestats[ch].mymap.usedh);
-    me.Decode();
-    //std::cout << buf.GetBufPos() << std::endl;
-  }
+    int minv=framestats[ch].minval + framestats[ch].mean;
+    int maxv=framestats[ch].maxval + framestats[ch].mean;
+    framestats[ch].pcm_map.SetRanges(minv,maxv);
 
+    #if 0
+      framestats[ch].mymap.Reset();
+      MapEncoder me(rc,framestats[ch].mymap.usedl,framestats[ch].mymap.usedh);
+      me.Decode();
+    #endif
+
+      BMap bm(rc);
+      auto &pcm=framestats[ch].pcm_map;
+      BIntMap bmap(pcm.used,pcm.minval,pcm.maxval);
+      BIntMap bmap_ref=(ch==0)
+      ?BIntMap()
+      :BIntMap(); //framestats[0].pcm_map.used,framestats[0].pcm_map.minval,framestats[0].pcm_map.maxval);
+
+      bm.Decode(bmap,bmap_ref);
+
+      pcm.BuildPrefixSums();
+  }
   BitplaneCoder bc(framestats[ch].maxbpn,numsamples);
   bc.Decode(rc.decode_p1,dst);
   rc.Stop();
@@ -445,10 +490,11 @@ void FrameCoder::Predict()
   for (int ch=0;ch<numchannels_;ch++)
   {
     AnalyseMonoChannel(ch,numsamples_);
+    //analyse sparse before mean removal
     if (cfg.sparse_pcm) {
-      framestats[ch].mymap.Reset();
-      framestats[ch].mymap.Analyse(&(samples[ch][0]),numsamples_);
+      framestats[ch].pcm_map.Analyse(span_ci32(samples[ch].data(),numsamples_));
     }
+    //remove mean
     if (cfg.zero_mean==0) {
       framestats[ch].mean = 0;
     } else if (framestats[ch].mean!=0) {
@@ -698,7 +744,7 @@ std::pair<double,double> Codec::AnalyseSparse(std::span<const int32_t> buf)
   SparsePCM spcm;
   spcm.Analyse(buf);
 
-  return {spcm.fraction_used,spcm.fraction_cost};
+  return {spcm.st.fraction_used,spcm.st.fraction_cost};
 }
 
 void Codec::PushState(std::vector<Codec::tsub_frame> &sub_frames,Codec::tsub_frame &curframe,int min_frame_length,int block_state=-1,int samples_block=0)
