@@ -1,47 +1,46 @@
 #ifndef PROFILE_H
 #define PROFILE_H
 
-#include "map.h"
+#include "sparse.h"
 #include "pred.h"
 
 #include <variant>
 #include <vector>
 
 class SACProfile {
-public:
-  struct FrameStats {
-    std::int32_t maxbpn{}, maxbpn_map{};
-    bool enc_mapped{};
-    std::int32_t blocksize{}, minval{}, maxval{}, mean{};
-    Remap mymap;
-  };
+  public:
+    struct FrameStats {
+      std::int32_t maxbpn{}, maxbpn_map{};
+      bool enc_mapped{};
+      std::int32_t blocksize{}, minval{}, maxval{}, mean{};
+    };
 
-  struct elem {
-    float vmin, vmax;
-    std::variant<float, std::uint16_t> val;
-  };
+    struct elem {
+      float vmin, vmax;
+      std::variant<float, std::uint16_t> val;
+    };
 
-  void add_float(float vmin, float vmax, float val) {
-    vparam.push_back(elem{vmin, vmax, val});
-  }
+    void add_float(float vmin, float vmax, float val) {
+      vparam.push_back(elem{vmin, vmax, val});
+    }
 
-  float get_float() {
-    float val = get<float>(vparam[index].val);
-    index++;
-    return val;
-  }
+    float get_float() {
+      float val = get<float>(vparam[index].val);
+      index++;
+      return val;
+    }
 
-  void add_ols() {
-    add_float(0.99, 0.9999, 0.998); // lambda
-    add_float(0.001, 10.0, 0.001);  // ols-nu
-    add_float(4, 32, 16);           //
-  }
+    void add_ols() {
+      add_float(0.99, 0.9999, 0.998); // lambda
+      add_float(0.001, 10.0, 0.001);  // ols-nu
+      add_float(4, 32, 16);           //
+    }
 
-  void get_ols(Predictor::tparam& param) {
-    param.lambda0 = get_float();
-    param.ols_nu0 = get_float();
-    param.nA = get_float();
-  }
+    void get_ols(Predictor::tparam& param) {
+      param.lambda0 = get_float();
+      param.ols_nu0 = get_float();
+      param.nA = get_float();
+    }
 
   void set_profile() { add_ols(); }
 
@@ -68,7 +67,7 @@ public:
     std::int32_t maxbpn{}, maxbpn_map{};
     bool enc_mapped{};
     std::int32_t blocksize{}, minval{}, maxval{}, mean{};
-    Remap mymap;
+    SparsePCM pcm_map;
   };
 
   struct coef {

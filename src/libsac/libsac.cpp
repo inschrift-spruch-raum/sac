@@ -4,6 +4,7 @@
 #include "../opt/cma.h"
 #include "../opt/dds.h"
 #include "../opt/de.h"
+#include "bmap.h"
 #include "pred.h"
 #include "sparse.h"
 
@@ -142,12 +143,13 @@ void FrameCoder::PredictFrame(
 ) {
   Predictor::tparam param;
   SetParam(param, profile, optimize);
-  Range r0{.lo=framestats[0].minval,.hi=framestats[0].maxval};
-  Range r1=r0;if (numchannels_==2) {
-    r1={.lo=framestats[1].minval,.hi=framestats[1].maxval};
+  Range r0{.lo = framestats[0].minval, .hi = framestats[0].maxval};
+  Range r1 = r0;
+  if(numchannels_ == 2) {
+    r1 = {.lo = framestats[1].minval, .hi = framestats[1].maxval};
   }
 
-  Predictor pr(r0,r1,param);
+  Predictor pr(r0, r1, param);
 
   auto eprocess = [&](
                     std::int32_t ch_p, std::int32_t ch, std::int32_t val,
@@ -198,11 +200,12 @@ void FrameCoder::UnpredictFrame(
 ) {
   Predictor::tparam param;
   SetParam(param, profile, false);
-  Range r0{.lo=framestats[0].minval,.hi=framestats[0].maxval};
-  Range r1=r0;if (numchannels_==2) {
-    r1={.lo=framestats[1].minval,.hi=framestats[1].maxval};
+  Range r0{.lo = framestats[0].minval, .hi = framestats[0].maxval};
+  Range r1 = r0;
+  if(numchannels_ == 2) {
+    r1 = {.lo = framestats[1].minval, .hi = framestats[1].maxval};
   }
-  Predictor pr(r0,r1,param);
+  Predictor pr(r0, r1, param);
 
   auto dprocess = [&](
                     std::int32_t ch_p, std::int32_t ch,
@@ -215,9 +218,9 @@ void FrameCoder::UnpredictFrame(
     );
 
     if(framestats[ch].enc_mapped) {
-      dst[idx] =
-        pi
-        + framestats[ch].mymap.Unmap(pi + framestats[ch].mean, error[ch][idx]);
+      std::int32_t mval =
+        framestats[ch].pcm_map.Unmap(error[ch][idx], pi + framestats[ch].mean);
+      dst[idx] = pi + mval;
     } else {
       dst[idx] = pi + error[ch][idx];
     }
@@ -287,38 +290,56 @@ std::size_t FrameCoder::EncodeMonoFrame_Mapped(
 
   BitplaneCoder bc(framestats[ch].maxbpn_map, numsamples);
 
-  MapEncoder me(rc, framestats[ch].mymap.usedl, framestats[ch].mymap.usedh);
-  me.Encode();
+  BMap bm(rc);
+  auto& pcm = framestats[ch].pcm_map;
+  BIntMap bmap(pcm.used, pcm.minval, pcm.maxval);
+  // fix: check if pcm_map of ch0 is available for ch1
+  BIntMap bmap_ref = BIntMap();
+
+  bm.Encode(bmap, bmap_ref);
+  if(cfg.verbose_level > 0 && (std::size(pcm.used) != 0U)) {
+    double r = static_cast<double>(buf.GetBufPos()) * 800.0
+               / static_cast<double>(std::size(pcm.used));
+    std::cout << "  map_enc ch" << ch << " " << std::size(pcm.used) << " -> "
+              << buf.GetBufPos() << "b (" << std::format("{:0.1f}", r)
+              << "%)\n";
+  }
+
   bc.Encode(rc.encode_p1, s2u_error_map[ch].data());
   rc.Stop();
   return buf.GetBufPos();
 }
 
 double FrameCoder::CalcRemapError(std::int32_t ch, std::int32_t numsamples) {
-  std::int32_t emax_map = 1;
-  std::int64_t sum_error = 0;
-  std::int64_t sum_emap = 0;
-
+  std::vector<std::int32_t> emap(numsamples);
+  std::int32_t emax_map = 0;
   for(std::int32_t i = 0; i < numsamples; i++) {
-    std::int32_t map_e = framestats[ch].mymap.Map(pred[ch][i], error[ch][i]);
+    std::int32_t e = error[ch][i];
+    std::int32_t p = pred[ch][i];
+    // int32_t map_e=framestats[ch].mymap.Map(p,e);
+
+    std::int32_t map_spcm = framestats[ch].pcm_map.Map(e, p);
+    // if (map_e != map_spcm)
+    //   std::cerr << "error in map: " << map_e << ' ' << map_spcm << '\n';
+    std::int32_t unmap_e = framestats[ch].pcm_map.Unmap(map_spcm, p);
+    if(e != unmap_e) {
+      std::cerr << "error: pcm_map (" << e << ' ' << unmap_e << ")\n";
+    }
+
+    std::int32_t map_e = map_spcm;
+
     std::int32_t map_ue = MathUtils::S2U(map_e);
-    sum_emap += std::abs(map_e);
+    emap[i] = map_e;
     s2u_error_map[ch][i] = map_ue;
-
     emax_map = std::max(emax_map, map_ue);
-
-    sum_error += std::abs(error[ch][i]);
   }
-
   framestats[ch].maxbpn_map = std::ilogb(emax_map);
 
-  double ent1 = 0.0;
-  double ent2 = 0.0;
-  if(numsamples > 0) {
-    ent1 = static_cast<double>(sum_error) / static_cast<double>(numsamples);
-    ent2 = static_cast<double>(sum_emap) / static_cast<double>(numsamples);
-  }
-
+  CostL1 cost;
+  double ent1 =
+    cost.Calc(std::span{error[ch].data(), static_cast<unsigned>(numsamples)});
+  double ent2 =
+    cost.Calc(std::span{emap.data(), static_cast<unsigned>(numsamples)});
   double r = 1.0;
   if(ent2 != 0.0) { r = ent1 / ent2; }
 
@@ -366,10 +387,18 @@ void FrameCoder::DecodeMonoFrame(std::int32_t ch, std::int32_t numsamples) {
   RangeCoderSH rc(buf, 1);
   rc.Init();
   if(framestats[ch].enc_mapped) {
-    framestats[ch].mymap.Reset();
-    MapEncoder me(rc, framestats[ch].mymap.usedl, framestats[ch].mymap.usedh);
-    me.Decode();
-    // std::cout << buf.GetBufPos() << std::endl;
+    int minv = framestats[ch].minval + framestats[ch].mean;
+    int maxv = framestats[ch].maxval + framestats[ch].mean;
+    framestats[ch].pcm_map.SetRanges(minv, maxv);
+
+    BMap bm(rc);
+    auto& pcm = framestats[ch].pcm_map;
+    BIntMap bmap(pcm.used, pcm.minval, pcm.maxval);
+    BIntMap bmap_ref = BIntMap();
+
+    bm.Decode(bmap, bmap_ref);
+
+    pcm.BuildPrefixSums();
   }
 
   BitplaneCoder bc(framestats[ch].maxbpn, numsamples);
@@ -409,21 +438,18 @@ void FrameCoder::PrintProfile(SacProfile& profile) {
   }
   std::cout << '\n';
   std::cout << "mu_decay ";
-  for(const auto& x: param.vmudecay0) {
-    std::cout << x << ' ';
-  }
+  for(const auto& x: param.vmudecay0) { std::cout << x << ' '; }
   std::cout << '\n';
   std::cout << "pow_decay ";
-  for(const auto& x: param.vpowdecay0){
-    std::cout << x << ' ';
-  }
+  for(const auto& x: param.vpowdecay0) { std::cout << x << ' '; }
   std::cout << '\n';
   std::cout << "mu mix mu " << param.mu_mix0 << " " << param.mu_mix1 << '\n';
   std::cout << "mu mix beta " << param.mu_mix_beta0 << " " << param.mu_mix_beta1
             << '\n';
   std::cout << "ch-ref " << param.ch_ref << "\n";
   std::cout << "bias mu " << param.bias_mu0 << ", " << param.bias_mu1
-            << " scale " << (1U << static_cast<std::uint32_t>(param.bias_scale0)) << ' '
+            << " scale "
+            << (1U << static_cast<std::uint32_t>(param.bias_scale0)) << ' '
             << (1U << static_cast<std::uint32_t>(param.bias_scale1)) << '\n';
   std::cout << "lm " << param.lm_n << " gamma " << param.lm_alpha << '\n';
   std::cout << "proj alpha " << param.proj_alpha0 << " " << param.proj_alpha1
@@ -544,9 +570,7 @@ void FrameCoder::Optimize(
       static_cast<float>(ret.second[i]);
   }
 
-  if (cfg.verbose_level>0) {
-    PrintProfile(profile);
-  }
+  if(cfg.verbose_level > 0) { PrintProfile(profile); }
 }
 
 void FrameCoder::CnvError_S2U(
@@ -566,10 +590,13 @@ void FrameCoder::CnvError_S2U(
 void FrameCoder::Predict() {
   for(std::int32_t ch = 0; ch < numchannels_; ch++) {
     AnalyseMonoChannel(ch, numsamples_);
+    // analyse sparse before mean removal
     if(cfg.sparse_pcm != 0) {
-      framestats[ch].mymap.Reset();
-      framestats[ch].mymap.Analyse(samples[ch], numsamples_);
+      framestats[ch].pcm_map.Analyse(
+        span_ci32(samples[ch].data(), numsamples_)
+      );
     }
+    // remove mean
     if(cfg.zero_mean == 0) {
       framestats[ch].mean = 0;
     } else if(framestats[ch].mean != 0) {
@@ -590,8 +617,8 @@ void FrameCoder::Predict() {
     // optimize all params
     std::vector<std::int32_t> lparam_base(base_profile.coefs.size());
     std::iota(std::begin(lparam_base), std::end(lparam_base), 0);
-    std::erase(lparam_base,56);
-    std::erase(lparam_base,57);
+    std::erase(lparam_base, 56);
+    std::erase(lparam_base, 57);
 
     Optimize(cfg.ocfg, base_profile, lparam_base);
   }
@@ -740,9 +767,7 @@ void FrameCoder::ReadEncoded(AudioFile<AudioFileBase::Mode::Read>& fin) {
     BitUtils::get32LH(std::span<std::uint8_t, 4>(buf.data(), 4))
   );
   std::vector<std::uint8_t> profile_buf(profile_size_bytes_);
-  fin.file.read(
-    std::bit_cast<char*>(profile_buf.data()), profile_size_bytes_
-  );
+  fin.file.read(std::bit_cast<char*>(profile_buf.data()), profile_size_bytes_);
   DecodeProfile(base_profile, profile_buf);
 
   for(std::int32_t ch = 0; ch < numchannels_; ch++) {
@@ -874,7 +899,7 @@ Codec::AnalyseSparse(std::span<const std::int32_t> buf) {
   SparsePCM spcm;
   spcm.Analyse(buf);
 
-  return {spcm.fraction_used, spcm.fraction_cost};
+  return {spcm.st.fraction_used, spcm.st.fraction_cost};
 }
 
 void Codec::PushState(
@@ -886,8 +911,9 @@ void Codec::PushState(
     curframe.length += samples_block;
     return;
   }
-  if(curframe.length < min_frame_length
-     && (sub_frames.size() != 0U)) { // extend
+  if(
+    curframe.length < min_frame_length && (sub_frames.size() != 0U)
+  ) { // extend
     sub_frames.back().length += curframe.length;
     return;
   }
