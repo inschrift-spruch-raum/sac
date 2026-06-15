@@ -26,13 +26,26 @@ double RLS::Predict(const vec1D &input)
   return Predict();
 }
 
+void RLS::ResetP()
+{
+  for (int i = 0; i < n; ++i) {
+    std::fill(P[i].begin(), P[i].end(),0.0);
+    P[i][i] = 1.0;
+  }
+}
+
 void RLS::Update(double val)
 {
   const double err=val-px;
 
   // a priori variance of prediction, //phi=x^T P x
   const vec1D ph=slmath::mul(P,x);
-  const double phi=std::max(slmath::dot(x,ph),PHI_FLOOR);
+  const double phi=slmath::dot(x,ph);
+
+  if (!std::isfinite(phi) || phi<0.0) {
+    ResetP(); //reset inverse covariance
+    return;
+  }
 
   // adaptive lambda control using
   // Normalized Innovation Squared (NIS)
