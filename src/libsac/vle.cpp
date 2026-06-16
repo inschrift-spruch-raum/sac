@@ -19,9 +19,7 @@ BitplaneCoder::BitplaneCoder(std::int32_t maxbpn, std::size_t numsamples):
   ssemix(2),
   msb(numsamples),
   maxbpn(maxbpn),
-  numsamples(numsamples),
-  lm(maxbpn)
-// n_laplace(32),weights_laplace(2*n_laplace+1),
+  numsamples(numsamples)
 {
   state = 0;
   bpn = 0;
@@ -36,16 +34,10 @@ BitplaneCoder::BitplaneCoder(std::int32_t maxbpn, std::size_t numsamples):
       ),
       PSCALEm
     );
-    // std::cout << p << ' ';
     p_laplace[i].p1 = p;
   }
   pestimate = 0;
   for(std::int32_t i = 0; i < 32; i++) { bmask[i] = ~((1U << i) - 1); }
-  /*double s=35;
-  for (std::int32_t i=0;i<2*n_laplace+1;i++) {
-    std::int32_t idx=i-n_laplace;
-    weights_laplace[i]=1.0; //exp(-(idx*idx)/(s*s));
-  }*/
 }
 
 void BitplaneCoder::GetSigState(std::int32_t i) {

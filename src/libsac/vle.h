@@ -82,7 +82,6 @@ private:
   std::uint32_t bmask[32];
   std::int32_t maxbpn, bpn, numsamples, nrun, pestimate;
   std::uint32_t state;
-  StaticLaplaceModel lm;
 };
 
 class Golomb {

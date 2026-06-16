@@ -39,7 +39,6 @@ class ALC {
 
 // Recursive Least Squares algorithm
 class RLS {
-  static constexpr double PHI_FLOOR=1E-8;
   public:
     explicit RLS(std::int32_t n,double gamma,double beta,double nu=1);
     double Predict();
@@ -48,6 +47,7 @@ class RLS {
     void UpdateHist(double val);
     std::int32_t n;
   private:
+    void ResetP();
     double px;
     vec1D x,w;
     vec2D P;
