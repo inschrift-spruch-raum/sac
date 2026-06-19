@@ -1,7 +1,7 @@
 #pragma once // CASCADE_H
 
 #include <memory>
-
+#include "nlms.h"
 #include "blend.h"
 #include "../common/utils.h"
 #include "ls.h"
@@ -61,8 +61,8 @@ make_mix(std::int32_t n,double mu_mix,double mu_mix_beta)
 {
     std::vector<std::unique_ptr<LS>> p;
     p.push_back(std::make_unique<LS_ADA<Loss::L1,LSInitType::Uniform>>(n,mu_mix,mu_mix_beta));
-    //p.push_back(std::make_unique<LS_ADA<Loss::HBR<256.0>,LSInitType::Uniform>>(n,mu_mix,mu_mix_beta));
     p.push_back(std::make_unique<LS_ADA<Loss::L2,LSInitType::Uniform>>(n,mu_mix,mu_mix_beta));
+    //p.push_back(std::make_unique<LS_ADA<Loss::HBR<256.0>,LSInitType::Uniform>>(n,mu_mix,mu_mix_beta));
     //p.push_back(std::make_unique<HM::HMix<Loss::L1,HM::Gate1<HM::Tanh>,HM::NoReg,2>>(n,mu_mix,mu_mix_beta));
     //p.push_back(std::make_unique<HM::HMix<Loss::L2,HM::Gate1<HM::Tanh>,HM::NoReg,2>>(n,mu_mix,mu_mix_beta));
     return p;
@@ -102,11 +102,9 @@ class Cascade {
       for (int i=0;i<=n;i++)
       {
         //target for stage i
-        const double w=mix.GetWeight(i);
-
-        double px=(1.0-p_alpha)*p_prefix+p_alpha*(pred);
-        bp[i]=target - std::clamp(px,(double)r.lo,(double)r.hi);
-        p_prefix+=w*p[i];
+        double px=(1.0-p_alpha)*p_prefix+p_alpha*pred;
+        bp[i]=target-std::clamp(px,(double)r.lo,(double)r.hi);
+        p_prefix+=mix.GetWeight(i)*p[i];
       }
 
       for (int i=0;i<n; i++)
@@ -125,6 +123,6 @@ class Cascade {
     vec1D p,bp;
     BlendLS mix;
     RLS lm;
-    std::vector<LS_Stream*> clms;
+    std::vector<NLMS_Stream*> clms;
     double p_alpha,pred;
 };

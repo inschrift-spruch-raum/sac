@@ -1,115 +1,12 @@
 #pragma once // LS_H
 
 #include "../global.h"
-#include "../common/histbuf.h"
 #include "../common/math.h"
 #include <algorithm>
 #include <cmath>
 
-class LS_Stream {
-  public:
-    LS_Stream(std::int32_t n)
-    :n(n),x(n),w(n),pred(0.)
-    {
-
-    }
-    double Predict() {
-      pred= MathUtils::dot_scalar(x.get_span(),w);
-      return pred;
-    }
-    virtual void Update(double val)=0;
-    virtual ~LS_Stream(){};
-  protected:
-    std::int32_t n;
-    RollBuffer2<double>x;
-    std::vector<double,align_alloc<double>> w;
-    double pred;
-};
-
-class NLMS_Stream : public LS_Stream
-{
-  public:
-    NLMS_Stream(std::int32_t n,double mu,double mu_decay=1.0,double pow_decay=0.8)
-    :LS_Stream(n),mutab(n),powtab(n),mu(mu)
-    {
-      sum_powtab=0;
-      for (std::int32_t i=0;i<n;i++) {
-         powtab[i]=1.0/(std::pow(1+i,pow_decay));
-         sum_powtab+=powtab[i];
-         mutab[i]=std::pow(mu_decay,i);
-      }
-    }
-
-    void Update(double val) override {
-      const double spow=MathUtils::calc_spow(x.get_span(), powtab);
-      const double wgrad=mu*(val-pred)*sum_powtab/(spow + SACCfg::NLMS_POW_EPS);
-      for (std::int32_t i=0;i<n;i++) {
-        w[i]+=mutab[i]*(wgrad*x[i]);
-        if constexpr(SACCfg::NLMS_CLAMPW) {
-          w[i]=std::clamp(w[i],-SACCfg::NLMS_SCALE,SACCfg::NLMS_SCALE);
-        }
-      }
-      x.push(val);
-    };
-    ~NLMS_Stream() override {} ;
-  protected:
-    std::vector<double,align_alloc<double>> mutab,powtab;
-    double sum_powtab;
-    double mu;
-};
-
-class LADADA_Stream : public LS_Stream
-{
-  public:
-    LADADA_Stream(std::int32_t n,double mu,double beta=0.97)
-    :LS_Stream(n),eg(n),mu(mu),beta(beta)
-    {
-
-    }
-    void Update(double val) override
-    {
-      const double serr=MathUtils::sgn(val-pred); // prediction error
-      for (std::int32_t i=0;i<n;i++) {
-        double const grad=serr*x[i];
-        eg[i]=beta*eg[i]+(1.0-beta)*grad*grad; //accumulate gradients
-        double g=grad*1.0/(sqrt(eg[i])+SACCfg::LMS_ADA_EPS);// update weights
-        w[i]+=mu*g;
-      }
-      x.push(val);
-    }
-  protected:
-    vec1D eg;
-    double mu,beta;
-};
-
-class LMSADA_Stream : public LS_Stream
-{
-  public:
-    LMSADA_Stream(std::int32_t n,double mu,double beta=0.97,double nu=0.0)
-    :LS_Stream(n),eg(n),mu(mu),beta(beta),nu(nu)
-    {
-
-    }
-    void Update(double val) override
-    {
-      const double err=val-pred; // prediction error
-      for (std::int32_t i=0;i<n;i++) {
-        double const grad=err*x[i]-nu*MathUtils::sgn(w[i]);
-        eg[i]=beta*eg[i]+(1.0-beta)*grad*grad; //accumulate gradients
-        double g=grad*1.0/(sqrt(eg[i])+SACCfg::LMS_ADA_EPS);// update weights
-        w[i]+=mu*g;
-      }
-      x.push(val);
-    }
-  protected:
-    vec1D eg;
-    double mu,beta,nu;
-};
-
 // Linear systems using gradient descent (ADAGrad/RMsprop style)
 // supports: custom loss function, weight decay and init type
-
-
 enum class LSInitType {Zero,One,Uniform,Decay};
 
 //LossFunction
@@ -129,7 +26,6 @@ template <double d=4>
   };
 
 };
-
 
 //Regularization
 namespace Reg {
